@@ -1,0 +1,7 @@
+*.o
+*.a
+*~
+CMakeFiles/*
+old/*
+CMakeCache.txt
+doc/*

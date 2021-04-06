@@ -1,0 +1,35 @@
+set(SOURCES
+Chemistry.cxx
+Configurator.cxx
+Crc32.cxx
+DecayChannel.cxx
+DecayTable.cxx
+Energy.cxx
+Entropy.cxx
+Event.cxx
+EventGenerator.cxx
+Integrator.cxx
+Model.cxx
+Model_BlastWave.cxx
+Model_Example.cxx
+Parser.cxx
+Particle.cxx
+ParticleCoor.cxx
+ParticleDB.cxx
+ParticleDecayer.cxx
+ParticleType.cxx
+Pressure.cxx
+SoundVelocity.cxx
+Temperature.cxx
+Thermodynamics.cxx
+Vector3D.cxx
+Viscosity.cxx
+Global.cxx)
+
+
+add_library(therminator SHARED ${SOURCES})
+target_link_libraries(therminator ${ROOT_LIBRARIES})
+
+add_executable(therm2_events.exe therm2_events.cxx)
+target_link_libraries(therm2_events.exe therminator)
+

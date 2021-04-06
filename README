@@ -1,0 +1,37 @@
+
+
+Compilation:
+============
+
+1/ Go to src
+
+2/ Use cmake to make the Makefile
+
+cmake ./ 
+
+3/ Compile 
+
+make
+
+Run an Example:
+===============
+
+* The directory work, contains a source code t2.cxx , which creates a thermal gas and does the decays making a bunch of histograms
+
+* cd to the directory  "run"
+
+* run the example  ../src/work/t2.exe
+
+This reads the input file events.ini, and produces the output funcs.root.  The first time program is run this produces fmultiplicity_375215AB.txt . After that the "fmultiplicity" file is read and not created. 
+
+Another input file is blastwave.ini, which is not used at this moment (but could be)
+
+* a plot of the output in funcs.root can be made with 
+
+root -b -q plot_pitypes.C
+
+which creates c1.pdf
+
+
+
+

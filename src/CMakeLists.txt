@@ -1,0 +1,31 @@
+
+CMAKE_MINIMUM_REQUIRED(VERSION 3.13)
+
+PROJECT(THERMINATOR CXX)
+
+set(CMAKE_MODULE_PATH ${THERMINATOR_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-reorder")
+
+find_package(ROOT)
+
+if (ROOT_FOUND)
+   #set the compiler that root likesks
+   execute_process(COMMAND root-config --cxx OUTPUT_VARIABLE ROOT_CXX OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+   set(CMAKE_CXX_COMPILER ${ROOT_CXX})
+
+   message("ROOT compiles with ${ROOT_DEFINITIONS}")
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ROOT_DEFINITIONS}")
+
+   message("RNAVIER_ROOT links with ${ROOT_LINK_FLAGS}")
+   set(CMAKE_EXE_LINKER_FLAGS ${ROOT_LINKFLAGS})
+endif()
+
+include_directories(${THERMINATOR_SOURCE_DIR}/include ${ROOT_INCLUDE_DIR})
+
+
+INCLUDE(CMakeDependentOption)
+
+ADD_SUBDIRECTORY(src)
+ADD_SUBDIRECTORY(work)
+

@@ -1,7 +1,10 @@
 *.o
+*.so
 *.a
 *.exe
 *~
+*.cmake
+Makefile
 CMakeFiles/
 old/*
 CMakeCache.txt

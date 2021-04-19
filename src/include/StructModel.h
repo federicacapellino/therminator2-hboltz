@@ -37,7 +37,6 @@
 #define _RANDOMIZE_BRANCH_		"Randomize"
 #define _STOREDEVENTS_BRANCH_		"StoredEvents"
 #define _TIMESTAMP_BRANCH_		"TimeStamp"
-#define _MODELID_BRANCH_		"ModelID"
 #define _MODELNAME_BRANCH_		"ModelName"
 #define _MODELHASH_BRANCH_		"ModelHash"
 #define _MODELDESCRIPTION_BRANCH_	"ModelDescription"
@@ -113,9 +112,6 @@ struct Model_t_Lhyquid2DBI
  * 
  * @def _TIMESTAMP_BRANCH_
  * @brief Macro with the name of a <a href="http://root.cern.ch/root/html/TBranch.html">TBranch</a> in the TTree with sTimeStamp.
- * 
- * @def _MODELID_BRANCH_
- * @brief Macro with the name of a <a href="http://root.cern.ch/root/html/TBranch.html">TBranch</a> in the TTree with sModel.
  * 
  * @def _MODELNAME_BRANCH_
  * @brief Macro with the name of a <a href="http://root.cern.ch/root/html/TBranch.html">TBranch</a> in the TTree with Model::mName.

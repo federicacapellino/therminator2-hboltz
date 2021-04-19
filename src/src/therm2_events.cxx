@@ -84,9 +84,9 @@ That information can be passed to other programs i.e. ROOT figures or HBT in one
       } else if (tDummy.EndsWith(".xml"))
         sHyperXML = tDummy;
       else if (tDummy.EndsWith(".ini"))
-    sMainINI  = tDummy;
+        sMainINI  = tDummy;
       else if (tDummy.IsDigit())
-    sParentPID = tDummy.Atoi();
+        sParentPID = tDummy.Atoi();
     }
   }
 

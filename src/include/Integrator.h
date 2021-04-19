@@ -39,20 +39,20 @@
 class Integrator {
   public:
     Integrator();
-    Integrator(int aNSamples);
+    Integrator(int aNSamples, Model *FOModel);
     ~Integrator();
     
     Model* GetModel();
     void   GenerateParticles(ParticleType* aPartType, int aPartCount, std::list<Particle>* aParticles);
-    void   SetMultiplicities(ParticleDB* aDB);
-    void   Randomize();
+    bool   SetMultiplicities(ParticleDB* aDB, const TString &filename="fmultiplicity");
+    std::string GetFileDescription() {return mFileDescription;}
     
   private:
     double Integrate(ParticleType* aPartType);
     
     Model*    mFOModel;
-    TRandom2* mRandom;
     int       mNSamples;
+    std::string    mFileDescription;
 };
 
 #endif
@@ -60,6 +60,7 @@ class Integrator {
 /*! @file Integrator.h
  * @brief Definition of Integrator class. Integrates the Cooper-Frye formula and generates primordial particles.
  */
+
 /*! @class Integrator
  * @brief Integrates the Cooper-Frye formula using a Monte-Carlo method 
  * and randomly generates primordial particles on a given freeze-out hypersurface.
@@ -67,9 +68,10 @@ class Integrator {
  * @fn Integrator::Integrator()
  * @brief Default constructor.
  *
- * @fn Integrator::Integrator(int aNSamples)
+ * @fn Integrator::Integrator(int aNSamples,Model *FOModel)
  * @brief Sets the number of Monte-Carlo samples to determine the maximal value of the integrand and average multiplicity  of the primordial particles.
  * @param [in] aNSamples number of Monte-Carlo samples
+ * @param [in] FOModel, a previously allocated Model class
  *
  * @fn Integrator::~Integrator()
  * @brief Destructor
@@ -83,15 +85,16 @@ class Integrator {
  * @param [in] aPartCount number of particles to be generated
  * @param [out] aParticles std::list container object that stores all generated particles
  *
- * @fn void Integrator::SetMultiplicities(ParticleDB* aDB)
- * @brief Set the particle database with appropriate average multiplicity and maximum value of the integrand.
+ * @fn bool Integrator::SetMultiplicities(ParticleDB* aDB, const TString &filename)
+ * @brief Read or write the particle database with appropriate average multiplicity and maximum value of the integrand. Returns true if the database is read, and false if the values are computed and the file is written.
  * 
- * Based on the model parameter a CRC32 hash is created. If a file with such
- * hash exists then the multiplicities and  max integrand data is taken from the
- * file. Otherwise these numbers are calculate with Monte-Carlo with the number
- * of samples defined.
+ Based on the model parameters a CRC32 hash (such as hash = "AAA1E9AE") is
+ created. If a file with name,  filename_hash.txt, with such hash exists
+ then the multiplicities and  max integrand data is taken from the  file.
+ Otherwise these numbers are calculate with Monte-Carlo with the number 
+ of samples defined.
+
  * @param [in] aDB particle data-base. See ParticleDB class.
+ * @param [in] a string containing the filename
  *
- * @fn void Integrator::Randomize()
- * @brief Sets a new seed for the random number generator based on the system time.
  */

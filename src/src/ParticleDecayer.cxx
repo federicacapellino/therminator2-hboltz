@@ -35,24 +35,17 @@
 #include <TDatime.h>
 
 ParticleDecayer::ParticleDecayer()
-: mParticles(0), mDB(0), mTypeF(0), mFather(0), mChannel(0), mRandom(0)
+: mParticles(0), mDB(0), mTypeF(0), mFather(0), mChannel(0)
 {
 }
 
 ParticleDecayer::ParticleDecayer(ParticleDB *aDB, std::list<Particle>* aParticles)
 : mDB(aDB), mParticles(aParticles)
 {
-  mRandom = new TRandom2();
-#ifdef _ROOT_4_
-  mRandom->SetSeed2(60356, 18233);
-#else
-  mRandom->SetSeed(60356);
-#endif
 }
 
 ParticleDecayer::~ParticleDecayer()
 {
-  delete mRandom;
 }
 
 int ParticleDecayer::DecayParticle(Particle* aFather)
@@ -65,7 +58,7 @@ int ParticleDecayer::DecayParticle(Particle* aFather)
   mTypeF  = mFather->GetParticleType();
   tTable  = mTypeF->GetTable();
   
-  tProb = mRandom->Rndm();
+  tProb = gRandom->Rndm();
 #ifdef _PARTICLE_DECAYER_RESCALE_CHANNELS_
   tChannelIndex = tTable->ChooseDecayChannel(tProb);
 #else
@@ -124,7 +117,7 @@ int ParticleDecayer::TwoBodyDecay()
   else {
     double tTau0 = tE / (mTypeF->GetMass() * mTypeF->GetGamma());
     // When it decays
-    tTime = -tTau0 * TMath::Log(mRandom->Rndm());
+    tTime = -tTau0 * TMath::Log(gRandom->Rndm());
   }
   // Decay coordinates
   double rxr = Xx + (Px / tE) * tTime;
@@ -136,8 +129,8 @@ int ParticleDecayer::TwoBodyDecay()
   double tMC1 = (tM * tM - (tM1 + tM2) * (tM1 + tM2) );
   double tMC2 = (tM * tM - (tM1 - tM2) * (tM1 - tM2) );
   double tMom = TMath::Sqrt(tMC1 * tMC2) / (2 * tM);
-  double tPhi = mRandom->Rndm() * 2 * TMath::Pi();
-  double tCosTh = 2.0 * mRandom->Rndm() - 1.0;
+  double tPhi = gRandom->Rndm() * 2 * TMath::Pi();
+  double tCosTh = 2.0 * gRandom->Rndm() - 1.0;
 
   double tPtr  = tMom * TMath::Sqrt(1 - tCosTh * tCosTh);
   double tPxr1 = tPtr * TMath::Cos(tPhi);
@@ -208,8 +201,8 @@ int ParticleDecayer::ThreeBodyDecay()
   do {
     // Generate E1 and E2 with the Monte-Carlo method
     do {
-      tES1 = mRandom->Rndm() * (tM - tM2 - tM3 - tM1) + tM1;
-      tES2 = mRandom->Rndm() * (tM - tM1 - tM3 - tM2) + tM2;
+      tES1 = gRandom->Rndm() * (tM - tM2 - tM3 - tM1) + tM1;
+      tES2 = gRandom->Rndm() * (tM - tM1 - tM3 - tM2) + tM2;
     } while (tES1+tES2 > tM); // The sum of both energies must be smaller than the resonance mass
     tP1  = TMath::Sqrt(tES1*tES1 - tM1*tM1);
     tP2  = TMath::Sqrt(tES2*tES2 - tM2*tM2);
@@ -224,7 +217,7 @@ int ParticleDecayer::ThreeBodyDecay()
   else {
     double tTau0 = tE / (mTypeF->GetMass() * mTypeF->GetGamma());
     // When it decays
-    tTime = -tTau0 * TMath::Log(mRandom->Rndm());
+    tTime = -tTau0 * TMath::Log(gRandom->Rndm());
   }
 
 // Decay coordinates
@@ -241,9 +234,9 @@ int ParticleDecayer::ThreeBodyDecay()
   double tES3 = TMath::Hypot(tM3, tP3);
 
   // Generating Euler angles
-  double tPhi = mRandom->Rndm() * 2 * TMath::Pi();
-  double tKsi = mRandom->Rndm() * 2 * TMath::Pi();
-  double tCosTh = mRandom->Rndm() * 2.0 - 1.0;
+  double tPhi = gRandom->Rndm() * 2 * TMath::Pi();
+  double tKsi = gRandom->Rndm() * 2 * TMath::Pi();
+  double tCosTh = gRandom->Rndm() * 2.0 - 1.0;
 
   double sp = TMath::Sin(tPhi);
   double cp = TMath::Cos(tPhi);
@@ -315,33 +308,12 @@ int ParticleDecayer::ThreeBodyDecay()
   return 1;
 }
 
-void ParticleDecayer::Randomize()
-{
-  TDatime tDate; 
-  
-#ifdef _ROOT_4_
-  mRandom->SetSeed2(tDate.Get(), (tDate.Get() % 11) * 7 + (tDate.Get() / 7));
-#else
-  mRandom->SetSeed(tDate.Get() / 2 * 3);
-#endif
-
-}
-
-void ParticleDecayer::SeedSet(int aSeed)
-{
-  
-#ifdef _ROOT_4_
-  mRandom->SetSeed2(aSeed, aSeed * 11 % 9);
-#else
-  mRandom->SetSeed(aSeed);
-#endif
-}
 
 inline double ParticleDecayer::BreitWigner(double Mass, double Gamma) const
 {
   double x,y;
 
-  y = mRandom->Rndm();
+  y = gRandom->Rndm();
   x = Mass + Gamma/2 * TMath::Tan( TMath::Pi() * (y - 0.5) );
 
   return x;

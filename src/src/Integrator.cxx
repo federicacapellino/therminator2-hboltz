@@ -30,44 +30,28 @@
 #include <fstream>
 #include <TDatime.h>
 #include <TString.h>
-#include "Integrator.h"
 #include <TMath.h>
+#include "Integrator.h"
 #include "THGlobal.h"
 
-// User-End Models
-#include "Model_BlastWave.h"
-#include "Model_Example.h"
+#include "Model.h"
 
 using namespace std;
 
-extern void     AddLogEntry(const char* aEntry);
-extern void     CopyINIFile();
-extern TString  sEventDIR;
-
 Integrator::Integrator()
-: mFOModel(0),  mRandom(0), mNSamples(0)
+: mFOModel(0),  mNSamples(0)
 {
 }
 
-Integrator::Integrator(int aNSamples)
+Integrator::Integrator(int aNSamples, Model *FOModel)
 : mNSamples(aNSamples)
 { 
-  mRandom = new TRandom2();
-#ifdef _ROOT_4_
-  mRandom->SetSeed2(41321, 8457);
-#else
-  mRandom->SetSeed(41321);
-#endif
-
-  //mFOModel = new Model_BlastWave(mRandom);
-  mFOModel = new Model_Example(mRandom);
-
+  mFOModel = FOModel;
 }
 
 Integrator::~Integrator()
 {
-  delete mRandom;
-  delete mFOModel;
+   // not owner of FOModel
 };
 
 Model* Integrator::GetModel()
@@ -91,7 +75,7 @@ void Integrator::GenerateParticles(ParticleType* aPartType, int aPartCount, list
   tFMax = aPartType->GetMaxIntegrand();  
   while (tIter < aPartCount) {
     tVal      = mFOModel->GetIntegrand(aPartType);
-    tValTest  = mRandom->Rndm() * tFMax;
+    tValTest  = gRandom->Rndm() * tFMax;
     if (tValTest<tVal) {
       tParticle = new Particle(aPartType);
       mFOModel->SetParticlePX(tParticle);
@@ -102,7 +86,7 @@ void Integrator::GenerateParticles(ParticleType* aPartType, int aPartCount, list
   }
 }
 
-void Integrator::SetMultiplicities(ParticleDB *aDB)
+bool Integrator::SetMultiplicities(ParticleDB *aDB, const TString &filename)
 {
   // Make or read table with probabilities
   ifstream tFileIn;
@@ -114,7 +98,7 @@ void Integrator::SetMultiplicities(ParticleDB *aDB)
   double   tMaxInt;
   double   tMulti;
 
-  sprintf(tMultiName,"%sfmultiplicity_%s.txt",sEventDIR.Data(),mFOModel->GetHash());
+  sprintf(tMultiName,"%s_%s.txt",filename.Data(),mFOModel->GetHash());
 
   tFileIn.open(tMultiName);
   if ((tFileIn) && (tFileIn.is_open())) {
@@ -137,13 +121,14 @@ void Integrator::SetMultiplicities(ParticleDB *aDB)
 
     tFileIn.close();
     sprintf(tBuff,"[input]\t%s",tMultiName);
-    AddLogEntry(tBuff);
+    mFileDescription = tBuff;
+    return true;
 
   } else {
 
     // Compute and write the data to a file
     char tTempName[kFileNameMaxChar];
-    sprintf(tTempName,"%sfmultiplicity_%s.tmp",sEventDIR.Data(),mFOModel->GetHash());
+    sprintf(tTempName,"%s_%s.tmp",filename.Data(),mFOModel->GetHash());
     tFileOut.open(tTempName);
     if ((tFileOut) && (tFileOut.is_open())) {
       PRINT_DEBUG_1("<Integrator::SetMultiplicities>\tMax Integrand and Multiplicity file " << tMultiName << " not found.");
@@ -176,19 +161,11 @@ void Integrator::SetMultiplicities(ParticleDB *aDB)
     }
 
     // The job is done. Record the result to the log file.
-    sprintf(tBuff,"[output]\t%s\tfmultiplicity_%s.txt",sEventDIR.Data(),mFOModel->GetHash());
-    AddLogEntry(tBuff);
+    sprintf(tBuff,"[output]\t%s_%s.txt",filename.Data(),mFOModel->GetHash());
+    mFileDescription = tBuff;
+    return false ;
   }
-}
-
-void Integrator::Randomize()
-{
-  TDatime tDate;
-#ifdef _ROOT_4_
-  mRandom->SetSeed2(tDate.Get(), (tDate.Get() % 11) * 7 + (tDate.Get() / 7));
-#else
-  mRandom->SetSeed(tDate.Get());
-#endif
+  return false ; // No path to this statement
 }
 
 double Integrator::Integrate(ParticleType* aPartType)

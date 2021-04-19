@@ -44,7 +44,6 @@ class Model
 {
   public:
     Model();
-    Model(TRandom2* aRandom);
     virtual ~Model();
     
     virtual double GetIntegrand(ParticleType* aPartType) = 0; 
@@ -57,7 +56,6 @@ class Model
     const char*	GetDescription();
 
   protected:
-    void	CreateEventSubDir();
     void	CalculateHash(TString aPreHash);
     
     double	Xt, Xx, Xy, Xz;
@@ -66,7 +64,6 @@ class Model
     TString	mHash;
     TString	mName;
     TString	mDescription;
-    TRandom2*	mRandom;    
 };
 
 #endif
@@ -126,10 +123,6 @@ class Model
  * 
  * @fn const char* Model::GetDescription()
  * @brief Returns a text description of the model and parameters for output files.
- *
- * @fn void Model::CreateEventSubDir()
- * @brief creates a model subdirectory structure in the main event directory (see sEventDIR)
- * 
  * @fn void Model::CalculateHash(TString aPreHash)
  * @brief calculates a CRC-32 hash from the given string of characters.
  * @param [in] aPreHash character string to hash

@@ -36,12 +36,6 @@
 using namespace TMath;
 using namespace std;
 
-extern Configurator* sMainConfig;
-extern TString	sModelINI;
-extern TString	sEventDIR;
-extern TString	sTimeStamp;
-extern int	sRandomize;
-extern int	sIntegrateSample;
 
 Model_BlastWave::Model_BlastWave()
 : Model(),
@@ -50,12 +44,11 @@ Model_BlastWave::Model_BlastWave()
 { 
 }
 
-Model_BlastWave::Model_BlastWave(TRandom2* aRandom)
-: Model(aRandom)
+Model_BlastWave::Model_BlastWave(const TString &modelini)
 {
   mName = "Blast-Wave";
   mThermo = new Thermodynamics();
-  ReadParameters();
+  ReadParameters(modelini);
   Description();
   mHyperCube = mRapSRange * 2.*Pi() * mRhoMax * mRapPRange * 1.0 * 2.*Pi();
 }
@@ -77,18 +70,18 @@ double Model_BlastWave::GetIntegrand(ParticleType* aPartType)
   Spin	= aPartType->GetSpin();
   Statistics = ( (Spin - static_cast<int>(Spin)) < 0.01 ? -1.0 : +1.0 );
 // Generate spatial components
-  Rho	= mRhoMax    * mRandom->Rndm();
-  PhiS	= 2.0 * Pi() * mRandom->Rndm();
-  RapS	= mRapSRange * mRandom->Rndm() - 0.5 * mRapSRange;
+  Rho	= mRhoMax    * gRandom->Rndm();
+  PhiS	= 2.0 * Pi() * gRandom->Rndm();
+  RapS	= mRapSRange * gRandom->Rndm() - 0.5 * mRapSRange;
   Tau	= mTau;
 // Generate momentum components
   {
-    double Zet = mRandom->Rndm();
+    double Zet = gRandom->Rndm();
     Pt	= Zet / (1.0 - Zet);
     dPt	= 1.0 / ( (1.0 - Zet) * (1.0 - Zet) );
   }
-  PhiP	= 2.0 * Pi() * mRandom->Rndm();
-  RapP	= mRapPRange * mRandom->Rndm() - 0.5 * mRapPRange;
+  PhiP	= 2.0 * Pi() * gRandom->Rndm();
+  RapP	= mRapPRange * gRandom->Rndm() - 0.5 * mRapPRange;
   Mt	= Hypot(aPartType->GetMass(), Pt);
 // Invariants
   PdotU	  = 1.0 / Sqrt(1 - mVt * mVt) * (Mt * CosH(RapS - RapP) - mVt * Pt * Cos(PhiS - PhiP));
@@ -122,9 +115,6 @@ void Model_BlastWave::Description()
   oss << "# - chem. potential Mu_S   : " <<MODEL_PAR_DESC(mThermo->GetMuS() * 1000.0,	"[MeV]");
   oss << "# - chem. potential Mu_C   : " <<MODEL_PAR_DESC(mThermo->GetMuC() * 1000.0,	"[MeV]");
   oss << "# Parameters hash (CRC32)  : " <<MODEL_PAR_DESC(mHash,		"");
-  oss << "# Integration samples      : " <<MODEL_PAR_DESC(sIntegrateSample,	"");
-  oss << "# Random seed              : " <<MODEL_PAR_DESC((sRandomize ? "yes" : "no"),"");
-  oss << "# Generation date          : " <<sTimeStamp<<" #"<<endl;
   oss << "##################################################"<< endl;
   mDescription = oss.str();
 }
@@ -146,13 +136,13 @@ void Model_BlastWave::AddParameterBranch(TTree* aTree)
   aTree->Branch(_MODEL_T_BRANCH_, &tPar, _MODEL_T_FORMAT_BLASTWAVE_)->Fill();
 }
 
-void Model_BlastWave::ReadParameters()
+void Model_BlastWave::ReadParameters(const TString &modelini)
 {
   Configurator*	tModelParam;
   Parser*	tParser;
   
   tModelParam = new Configurator;
-  tParser     = new Parser(sModelINI.Data());
+  tParser     = new Parser(modelini.Data());
   tParser->ReadINI(tModelParam);
   delete tParser;
   
@@ -180,12 +170,5 @@ void Model_BlastWave::ReadParameters()
   oss << mThermo->GetTemperature() << mThermo->GetMuB() << mThermo->GetMuI() << mThermo->GetMuS() << mThermo->GetMuC();
   CalculateHash(TString(oss.str()));
 
-// create event subdirectory if needed
-  try {
-    sEventDIR += tModelParam->GetParameter("EventSubDir");
-    CreateEventSubDir();
-  } catch (TString tError) {
-  }
-  
   delete tModelParam;
 }

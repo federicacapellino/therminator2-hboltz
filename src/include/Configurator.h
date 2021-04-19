@@ -42,6 +42,7 @@ class Configurator {
 
   public:
     Configurator();
+    Configurator(const std::string &filename);
     ~Configurator();
 
     TString GetParameter(const char* aKeyword) noexcept(false);

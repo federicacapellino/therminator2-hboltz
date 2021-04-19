@@ -142,23 +142,23 @@ void ReadParameters()
   }
 }
 
-//Reads in the particle database:
-//
-//Inputs:
-// 
-// sMainConfig (to obtain the search path)
-// aPartDB should have been allocated
-//
-//Outputs:
-// 
-// aPartDB Filled up
+//! Reads in the particle database:
+//!
+//!Inputs:
+//! 
+//! sMainConfig (to obtain the search path)
+//! aPartDB should have been allocated
+//!
+//!Outputs:
+//! 
+//! aPartDB Filled up
 void ReadSHARE(ParticleDB* aPartDB)
 {
   TString tShareDir;
   Parser* tParser;
   
   try {
-    tShareDir = sMainConfig->GetParameter("ShareDir"); tShareDir.Prepend("./");
+    tShareDir = sMainConfig->GetParameter("ShareDir"); 
   } catch (TString tError) {
     PRINT_DEBUG_1("<Parser::ReadParameters>\tCaught exception " << tError);
     PRINT_MESSAGE("\tDid not find SHARE input file location.");

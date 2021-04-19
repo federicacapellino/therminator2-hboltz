@@ -34,14 +34,11 @@
 #include "Event.h"
 #include "THGlobal.h"
 
-extern Configurator* sMainConfig;
-extern TString	sTimeStamp;
-extern int	sRandomize;
 
 using namespace std;
 
 Event::Event()
-: mPartDB(0), mInteg(0), mRandom(0), mDistribution(0)
+: mPartDB(0), mInteg(0),  mDistribution(0)
 {
   mMultiplicities.clear();
   Reset();
@@ -50,37 +47,21 @@ Event::Event()
 Event::Event(ParticleDB* aDB, Integrator* aInteg)
 : mPartDB(aDB), mInteg(aInteg), mDistribution(0)
 { 
-  mRandom = new TRandom2();
-#ifdef _ROOT_4_
-  mRandom->SetSeed2(31851, 14327);
-#else
-  mRandom->SetSeed(31851);
-#endif
   mMultiplicities.clear();
   mMultiplicities.resize(mPartDB->GetParticleTypeCount());
   Reset();
-  ReadParameters();
 }
 
 Event::~Event()
 {
   mParticles.clear();
   mMultiplicities.clear();
-  delete mRandom;
 }
 
-void Event::Reset(int aEventIter)
+void Event::Reset()
 {
-  ostringstream oss;
-  Crc32 tEventID;
-  
   mParticles.clear();
   Particle::ZeroEID();
-  
-  oss << sTimeStamp.Data() << "Event: " << aEventIter;
-  tEventID.Update(oss.str().data(), oss.str().length());
-  tEventID.Finish(); 
-  mEventID = tEventID.GetValue();
 }
 
 list<Particle>* Event::GetParticleList()
@@ -98,19 +79,9 @@ ParticleDB* Event::GetParticleDB() const
   return mPartDB;
 }
 
-unsigned int Event::GetEventID() const
-{
-  return mEventID;
-}
 
-void Event::GeneratePrimordials(int aSeed)
+void Event::GeneratePrimordials()
 { 
-#ifdef _ROOT_4_
-  if (aSeed) mRandom->SetSeed2(aSeed, (aSeed*2) % (7*11*23*31));
-#else
-  if (aSeed) mRandom->SetSeed(aSeed);
-#endif
-
   GenerateMultiplicities();
   for (int tIter=0; tIter<mPartDB->GetParticleTypeCount(); tIter++) {
     if(! strstr(mPartDB->GetParticleType(tIter)->GetName(),"gam000zer")) { 
@@ -125,7 +96,7 @@ void Event::GeneratePrimordials(int aSeed)
   }
 }
 
-void Event::DecayParticles(int aSeed)
+void Event::DecayParticles()
 {
   list<Particle>::iterator tIter;
   ParticleType*    tFatherType;
@@ -133,11 +104,6 @@ void Event::DecayParticles(int aSeed)
   
   tDecayer = new ParticleDecayer(mPartDB, &mParticles);
 
-  if (sRandomize)
-    tDecayer->Randomize();
-  else
-    tDecayer->SeedSet(aSeed);
-  
   tIter = mParticles.begin();
 // as new particles are added from decays the end() of the list moves until all particles had decayed
   do {
@@ -154,33 +120,22 @@ void Event::GenerateMultiplicities()
 {
   if(mDistribution == 0) { // Poisson
     for (int tIter=0; tIter<mPartDB->GetParticleTypeCount(); tIter++)
-      mMultiplicities[tIter] = mRandom->Poisson(mPartDB->GetParticleType(tIter)->GetMultiplicity());
+      mMultiplicities[tIter] = gRandom->Poisson(mPartDB->GetParticleType(tIter)->GetMultiplicity());
   } else if(mDistribution == 1) { // Negative Binomial
     for (int tIter=0; tIter<mPartDB->GetParticleTypeCount(); tIter++)
       mMultiplicities[tIter] = 0; // HOW?
   }
 }
 
-void Event::Randomize()
+void Event::SetDistribution(const std::string &name) 
 {
-  TDatime tDate;
-
-#ifdef _ROOT_4_
-  mRandom->SetSeed2(tDate.Get() / 2 * 3, tDate.Get() / 11 * 9);
-#else
-  mRandom->SetSeed(tDate.Get() / 2 * 3);
-#endif
+   if (name == "NegativeBinomial") {
+      mDistribution=1;
+   } else if (name == "Poisson") {
+      mDistribution=0;
+   } else {
+      PRINT_MESSAGE("Event::SetDistribution: bad selection in switch. Setting the distribution to Poisson.") ;
+      mDistribution=0;
+   }
 }
 
-void Event::ReadParameters()
-{
-  TString tDistribution; 
-  try {
-    tDistribution	= sMainConfig->GetParameter("MultiplicityDistribution");
-    if (tDistribution.Contains("NegativeBinomial"))
-      mDistribution = 1;
-  }
-  catch (TString tError) {
-    PRINT_DEBUG_1("<Event::ReadParameters>\tUsing default multiplicity distribution: Poissonian");
-  }
-}

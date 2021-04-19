@@ -43,8 +43,6 @@ class ParticleDecayer {
     ~ParticleDecayer();
 
     int  DecayParticle(Particle* aFather);
-    void Randomize();
-    void SeedSet(int aSeed);
 
   private:
     inline double BreitWigner(double Mass, double Gamma) const;
@@ -56,7 +54,6 @@ class ParticleDecayer {
     ParticleType*	 mTypeF;
     Particle*		 mFather;
     const DecayChannel*	 mChannel;
-    TRandom2*		 mRandom;
 };
 
 #endif

@@ -31,6 +31,7 @@
 #include <cstring>
 #include "Configurator.h"
 #include "THGlobal.h"
+#include "Parser.h"
 
 using namespace std;
 
@@ -42,6 +43,12 @@ Configurator::Configurator()
 Configurator::~Configurator()
 {
   mParameters.clear();
+}
+Configurator::Configurator(const string &filename)
+{
+  // Read in the database of particles
+  auto tParser = make_unique<Parser>(filename.c_str());
+  tParser->ReadINI(this);
 }
 
 TString Configurator::GetParameter(const char* aKeyword) noexcept(false)

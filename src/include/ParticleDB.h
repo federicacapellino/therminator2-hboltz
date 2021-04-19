@@ -37,6 +37,7 @@
 class ParticleDB {
   public:
     ParticleDB();
+    ParticleDB(const TString &path) ;
     ~ParticleDB();
 
     int           AddParticleType(ParticleType* aPartType);
@@ -50,6 +51,9 @@ class ParticleDB {
     std::vector<ParticleType> mParticleTable;
     std::map<TString, int>    mParticleNames;
 };
+
+void ReadSHARE(ParticleDB *aPartDB, const TString &aShareDir) ;
+void CheckSHARE(ParticleDB* aPartDB) ;
 
 #endif
 

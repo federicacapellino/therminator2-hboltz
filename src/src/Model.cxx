@@ -34,30 +34,16 @@
 
 using namespace std;
 
-extern Configurator *sMainConfig;
-extern TString  sEventDIR;
-
 Model::Model()
 : Xt(0.0), Xx(0.0), Xy(0.0), Xz(0.0),
   Pe(0.0), Px(0.0), Py(0.0), Pz(0.0),
-  mHyperCube(0.0),
-  mRandom(0)
+  mHyperCube(0.0)
 {
   mName="";
   mHash="";
   mDescription="";
 }
 
-Model::Model(TRandom2* aRandom)
-: Xt(0.0), Xx(0.0), Xy(0.0), Xz(0.0),
-  Pe(0.0), Px(0.0), Py(0.0), Pz(0.0),
-  mHyperCube(0.0),
-  mRandom(aRandom)
-{
-  mName="";
-  mHash="";
-  mDescription="";
-}
 
 Model::~Model()
 {
@@ -94,33 +80,6 @@ const char* Model::GetName()
 const char* Model::GetDescription()
 {
   return mDescription.Data();
-}
-
-void Model::CreateEventSubDir()
-{
-  struct stat tStatus;
-  TString tEventDir = sMainConfig->GetParameter("EventDir"); tEventDir.Prepend("./");
-  TString tSubDirs  = sEventDIR;
-  int     tPos      = 0;
-
-  tSubDirs.ReplaceAll(tEventDir,"");
-  while(tPos <= tSubDirs.Length()) {   
-    if(tEventDir.EndsWith("/")) {
-      if (stat(tEventDir.Data(), &tStatus) == -1) {
-        PRINT_DEBUG_3("<Model::CreateEventSubDir>\tDirectory " <<tEventDir<<" does not exist. Tying to create.");
-        if (mkdir(tEventDir.Data(), S_IRWXU | S_IXUSR | S_IRWXG | S_IXGRP | S_IROTH | S_IXOTH) == -1) {
-          PRINT_MESSAGE("<Model::CreateEventSubDir>\tFailed to create directory " << tEventDir);
-          exit(_ERROR_GENERAL_FILE_NOT_FOUND_);
-        } else {
-          PRINT_DEBUG_2("<Model::CreateEventSubDir>\tDirectory "<<tEventDir<<" created.");
-        }
-      } else {
-        PRINT_DEBUG_3("<Model::CreateEventSubDir>\tDirectory " <<tEventDir<<" does exist.");
-      }
-    }
-    tEventDir += tSubDirs[tPos];
-    tPos++;
-  }  
 }
 
 void Model::CalculateHash(TString aPreHash) {

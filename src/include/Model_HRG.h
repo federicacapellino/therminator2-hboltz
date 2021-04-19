@@ -32,13 +32,12 @@
 #include "Model.h"
 #include "Thermodynamics.h"
 
-class Model_Example
+class Model_HRG
 : public Model
 {
   public:
-    Model_Example();
-    Model_Example(TRandom2* aRandom);
-    ~Model_Example();
+    Model_HRG();
+    ~Model_HRG();
     
     double GetIntegrand(ParticleType* aPartType);
     void   AddParameterBranch(TTree* aTree);
@@ -47,53 +46,52 @@ class Model_Example
     double mTemperature;	// model parameter #1
     double mSize;
     void Description();
-    void ReadParameters();
 };
 
 #endif
 
-/*! @file Model_Example.h
- * @brief Definition of Model_Example class. Example freeze-out Model.
+/*! @file Model_HRG.h
+ * @brief Definition of Model_HRG class. HRG freeze-out Model.
  */
-/*! @class Model_Example
+/*! @class Model_HRG
  * @brief The purpose of this class is to show how to build custom model class.
  * 
  * <table>
  *   <tr><th>sModel</th>	<th>Model::mModelName</th>	<th>Description</th></tr>
- *   <tr><td>99</td>		<td>"Example"</td>		<td>Example model class</td></tr>
+ *   <tr><td>99</td>		<td>"HRG"</td>		<td>HRG model class</td></tr>
  * </table>
  *
- * @fn Model_Example::Model_Example()
+ * @fn Model_HRG::Model_HRG()
  * @brief Default constructor.
  *
- * @fn Model_Example::Model_Example(TRandom2* aRandom)
+ * @fn Model_HRG::Model_HRG(TRandom2* aRandom)
  * @brief Constructor that links a random number generator form Integrator.
  * @param [in] aRandom pointer to <a href="http://root.cern.ch/root/html/TRandom2.html">TRandom2</a> random number generator
  *
- * @fn Model_Example::~Model_Example()
+ * @fn Model_HRG::~Model_HRG()
  * @brief Destructor.
  *
- * @fn double Model_Example::GetIntegrand(ParticleType* aPartType)
+ * @fn double Model_HRG::GetIntegrand(ParticleType* aPartType)
  * @brief Generates random space-time coordinates and four-momentum of a particle of a given type 
  * and returns the value of the integrand of the Cooper-Frye formula.
  * @param [in] aPartType pointer to the ParticleType class holding particle properties.
  *
- * @fn void Model_Example::AddParameterBranch(TTree* aTree)
+ * @fn void Model_HRG::AddParameterBranch(TTree* aTree)
  * @brief Function called by EventGenerator to add a new <a href="http://root.cern.ch/root/html/TBranch.html">TBranch</a> 
  * structure to an opened event <a href="http://root.cern.ch/root/html/TFile.html">TFile</a>.
  * 
  * This branch contains model parameters and model description.
  * @param [in] aTree pointer to the current <a href="http://root.cern.ch/root/html/TTree.html">TTree</a> object.
  * 
- * @var double Model_Example::mParameter1
+ * @var double Model_HRG::mParameter1
  * @brief model parameter 1
  *
- * @var double Model_Example::mParameter2
+ * @var double Model_HRG::mParameter2
  * @brief model parameter 2
  *
- * @var double Model_Example::mParameter3
+ * @var double Model_HRG::mParameter3
  * @brief model parameter 3
  * 
- * @var Thermodynamics* Model_Example::mThermo
+ * @var Thermodynamics* Model_HRG::mThermo
  * @brief Pointer to the Thermodynamics class.
  */

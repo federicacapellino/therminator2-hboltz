@@ -31,24 +31,15 @@
 #include "THGlobal.h"
 #include "Configurator.h"
 #include "Parser.h"
-#include "Model_Example.h"
+#include "Model_HRG.h"
 
 using namespace TMath;
 using namespace std;
 
-extern Configurator* sMainConfig;
-extern TString sModelINI;
 
-Model_Example::Model_Example()
-: Model(),
-  mTemperature(0.0), mSize(0.)
+Model_HRG::Model_HRG()
 {
-}
-
-Model_Example::Model_Example(TRandom2* aRandom)
-: Model(aRandom)
-{
-  mName = "Example";
+  mName = "HRG";
 //  ReadParameters();
   Description();
   mTemperature = 0.155 ; // Units GeV
@@ -63,11 +54,11 @@ Model_Example::Model_Example(TRandom2* aRandom)
 
 }
 
-Model_Example::~Model_Example()
+Model_HRG::~Model_HRG()
 {
 }
 
-double Model_Example::GetIntegrand(ParticleType* aPartType)
+double Model_HRG::GetIntegrand(ParticleType* aPartType)
 {
   
   double Spin   = aPartType->GetSpin();
@@ -84,12 +75,12 @@ double Model_Example::GetIntegrand(ParticleType* aPartType)
 //
   double P, dP;
   {
-    double Zet = mRandom->Rndm();
+    double Zet = gRandom->Rndm();
     P  = Zet / (1.0 - Zet);
     dP = 1.0 / ( (1.0 - Zet) * (1.0 - Zet) );
   }
-  double phiP  = 2.0 * Pi() * mRandom->Rndm();
-  double cosP  = mRandom->Uniform(-1., 1.) ;
+  double phiP  = 2.0 * Pi() * gRandom->Rndm();
+  double cosP  = gRandom->Uniform(-1., 1.) ;
   double sinP  = sqrt(1. - cosP*cosP) ;
 
 
@@ -103,9 +94,9 @@ double Model_Example::GetIntegrand(ParticleType* aPartType)
 
 // Return values
   Xt = 0. ;
-  Xx = mRandom->Uniform(0., mSize) ;
-  Xy = mRandom->Uniform(0., mSize) ;
-  Xz = mRandom->Uniform(0., mSize) ;
+  Xx = gRandom->Uniform(0., mSize) ;
+  Xy = gRandom->Uniform(0., mSize) ;
+  Xz = gRandom->Uniform(0., mSize) ;
   Pe = PdotU;
   Px = P * sinP * cos(phiP);
   Py = P * sinP * sin(phiP) ;
@@ -113,7 +104,7 @@ double Model_Example::GetIntegrand(ParticleType* aPartType)
   return Integrand;
 }
 
-void Model_Example::Description()
+void Model_HRG::Description()
 {
   ostringstream oss;
   oss << "##################################################"<< endl;
@@ -125,7 +116,7 @@ void Model_Example::Description()
   mDescription = oss.str();
 }
 
-void Model_Example::AddParameterBranch(TTree* aTree)
+void Model_HRG::AddParameterBranch(TTree* aTree)
 {
   Model_t tPar;
   
@@ -133,25 +124,3 @@ void Model_Example::AddParameterBranch(TTree* aTree)
   aTree->Branch(_MODEL_T_BRANCH_, &tPar, _MODEL_T_FORMAT_)->Fill();
 }
 
-void Model_Example::ReadParameters()
-{
-  Configurator* tModelParam;
-  Parser*      tParser;
-  
-  tModelParam = new Configurator;
-  tParser     = new Parser(sModelINI.Data());
-  tParser->ReadINI(tModelParam);
-  delete tParser;
-  
-  try {
-    mTemperature   = (tModelParam->GetParameter("Temmperature")).Atof();
-    mSize   = (tModelParam->GetParameter("Size")).Atof();
-  } catch (TString tError) {
-    PRINT_MESSAGE("<Model_Example::ReadParameters>\tCaught exception " << tError);
-    PRINT_MESSAGE("\tDid not find one of the necessary model parameters.");
-    exit(_ERROR_CONFIG_PARAMETER_NOT_FOUND_);
-  }
-  
-  
-  delete tModelParam;
-}

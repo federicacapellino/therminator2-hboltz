@@ -35,26 +35,30 @@
 #include "ParticleDB.h"
 #include "Integrator.h"
 #include "Event.h"
+#include "Configurator.h"
 
 class EventGenerator {
   public:
     EventGenerator();
-    EventGenerator(ParticleDB* aDB);
+    EventGenerator(Configurator *config, ParticleDB* aDB, Model *model);
     ~EventGenerator();
 
-    void   GenerateEvents();
-    void   SetEventsTemp();
+    void GenerateEvents();
+    void AddLogEntry(const char* aEntry);
 
   private:
     void FindPreviousEventFiles();
-    void ReadParameters();  
+    void ReadParameters(Configurator *config);  
     void SaveEvent();
     void SaveAsRoot();
     void SaveAsText();
+    UInt_t GetEventID() const ;
+    void SetEventID(int aEventIter)  ;
 
     ParticleDB*	mDB;
     Integrator*	mInteg;
     Event*	mEvent;
+    UInt_t mEventID;
     TTree*	mParameterTree;
     TTree*	mEventTree;
     TTree*	mParticleTree;
@@ -63,8 +67,14 @@ class EventGenerator {
     int		mEventCounter;
     int		mNumberOfEvents;
     int		mEventExportType;
-    
     const int   kEventsPerFile;
+
+    int     mIntegrateSample;
+    TString mEventDIR ;
+    TString mLogName;
+    TString mTimeStamp ;
+
+    
 };
 
 #endif

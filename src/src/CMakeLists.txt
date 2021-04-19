@@ -11,7 +11,7 @@ EventGenerator.cxx
 Integrator.cxx
 Model.cxx
 Model_BlastWave.cxx
-Model_Example.cxx
+Model_HRG.cxx
 Parser.cxx
 Particle.cxx
 ParticleCoor.cxx
@@ -23,13 +23,12 @@ SoundVelocity.cxx
 Temperature.cxx
 Thermodynamics.cxx
 Vector3D.cxx
-Viscosity.cxx
-Global.cxx)
+Viscosity.cxx)
 
 
 add_library(therminator SHARED ${SOURCES})
 target_link_libraries(therminator ${ROOT_LIBRARIES})
 
-add_executable(therm2_events.exe therm2_events.cxx)
-target_link_libraries(therm2_events.exe therminator)
+#add_executable(therm2_events.exe therm2_events.cxx)
+#target_link_libraries(therm2_events.exe therminator)
 

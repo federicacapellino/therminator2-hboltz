@@ -37,7 +37,7 @@ class Model_BlastWave
 {
   public:
     Model_BlastWave();
-    Model_BlastWave(TRandom2* aRandom);
+    Model_BlastWave(const TString &modelini);
     ~Model_BlastWave();
     
     double GetIntegrand(ParticleType* aPartType);
@@ -53,7 +53,7 @@ class Model_BlastWave
     
   private:
     void   Description();
-    void   ReadParameters();
+    void   ReadParameters(const TString &modelini);
 };
 
 #endif

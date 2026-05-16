@@ -1,59 +1,57 @@
+// clang-format off
 /********************************************************************************
- *                                                                              *
- *             THERMINATOR 2: THERMal heavy-IoN generATOR 2                     *
- *                                                                              *
- * Version:                                                                     *
- *      Release, 2.0.3, 1 February 2011                                         *
- *                                                                              *
- * Authors:                                                                     *
- *      Mikolaj Chojnacki   (Mikolaj.Chojnacki@ifj.edu.pl)                      *
- *      Adam Kisiel         (kisiel@if.pw.edu.pl)                               *
- *      Wojciech Broniowski (Wojciech.Broniowski@ifj.edu.pl)                    *
- *      Wojciech Florkowski (Wojciech.Florkowski@ifj.edu.pl)                    *
- *                                                                              *
- * Project homepage:                                                            *
- *      http://therminator2.ifj.edu.pl/                                         *
- *                                                                              *
- * For the detailed description of the program and further references           *
- * to the description of the model please refer to                              *
- * http://arxiv.org/abs/1102.0273                                               *
- *                                                                              *
- * This code can be freely used and redistributed. However if you decide to     *
- * make modifications to the code, please, inform the authors.                  *
- * Any publication of results obtained using this code must include the         *
- * reference to arXiv:1102.0273 and the published version of it, when           *
- * available.                                                                   *
- *                                                                              *
- ********************************************************************************/
+*                                                                              *
+*             THERMINATOR 2: THERMal heavy-IoN generATOR 2                     *
+*                                                                              *
+* Version:                                                                     *
+*      Release, 2.0.3, 1 February 2011                                         *
+*                                                                              *
+* Authors:                                                                     *
+*      Mikolaj Chojnacki   (Mikolaj.Chojnacki@ifj.edu.pl)                      *
+*      Adam Kisiel         (kisiel@if.pw.edu.pl)                               *
+*      Wojciech Broniowski (Wojciech.Broniowski@ifj.edu.pl)                    *
+*      Wojciech Florkowski (Wojciech.Florkowski@ifj.edu.pl)                    *
+*                                                                              *
+* Project homepage:                                                            *
+*      http://therminator2.ifj.edu.pl/                                         *
+*                                                                              *
+* For the detailed description of the program and further references           *
+* to the description of the model please refer to                              *
+* http://arxiv.org/abs/1102.0273                                               *
+*                                                                              *
+* This code can be freely used and redistributed. However if you decide to     *
+* make modifications to the code, please, inform the authors.                  *
+* Any publication of results obtained using this code must include the         *
+* reference to arXiv:1102.0273 and the published version of it, when           *
+* available.                                                                   *
+*                                                                              *
+********************************************************************************/
+// clang-format on
 
 #ifndef _TH2_PARTICLE_DB_H_
-  #define _TH2_PARTICLE_DB_H_
+#define _TH2_PARTICLE_DB_H_
 
+#include "ParticleType.h"
+#include <TString.h>
 #include <map>
 #include <vector>
-#include <TString.h>
-#include "ParticleType.h"
 
 class ParticleDB {
-  public:
-    ParticleDB();
-    ParticleDB(const TString &path) ;
-    ~ParticleDB();
+public:
+  ParticleDB(const TString& path = "");
+  ~ParticleDB();
 
-    int           AddParticleType(ParticleType* aPartType);
-    ParticleType* GetParticleType(int aIndex);
-    ParticleType* GetParticleType(TString aName);
-    int           GetParticleTypeIndex(TString aName);
-    int           GetParticleTypeCount();
-    int           ExistsParticleType(TString aName);
+  int AddParticleType(ParticleType* aPartType);
+  ParticleType* GetParticleType(int aIndex);
+  ParticleType* GetParticleType(TString aName);
+  int GetParticleTypeIndex(TString aName);
+  int GetParticleTypeCount();
+  int ExistsParticleType(TString aName);
 
-  private:
-    std::vector<ParticleType> mParticleTable;
-    std::map<TString, int>    mParticleNames;
+private:
+  std::vector<ParticleType> mParticleTable;
+  std::map<TString, int> mParticleNames;
 };
-
-void ReadSHARE(ParticleDB *aPartDB, const TString &aShareDir) ;
-void CheckSHARE(ParticleDB* aPartDB) ;
 
 #endif
 
@@ -61,7 +59,8 @@ void CheckSHARE(ParticleDB* aPartDB) ;
  * @brief Definition of ParticleDB class. Database with ParticleType.
  */
 /*! @class ParticleDB
- * @brief Contains a database of particle types. The database can be accessed by giving an index number of desired particle or its name.
+ * @brief Contains a database of particle types. The database can be accessed by giving an index
+ * number of desired particle or its name.
  *
  * @fn ParticleDB::ParticleDB()
  * @brief Default constructor.

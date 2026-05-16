@@ -1,52 +1,53 @@
+// clang-format off
 /********************************************************************************
- *                                                                              *
- *             THERMINATOR 2: THERMal heavy-IoN generATOR 2                     *
- *                                                                              *
- * Version:                                                                     *
- *      Release, 2.0.3, 1 February 2011                                         *
- *                                                                              *
- * Authors:                                                                     *
- *      Mikolaj Chojnacki   (Mikolaj.Chojnacki@ifj.edu.pl)                      *
- *      Adam Kisiel         (kisiel@if.pw.edu.pl)                               *
- *      Wojciech Broniowski (Wojciech.Broniowski@ifj.edu.pl)                    *
- *      Wojciech Florkowski (Wojciech.Florkowski@ifj.edu.pl)                    *
- *                                                                              *
- * Project homepage:                                                            *
- *      http://therminator2.ifj.edu.pl/                                         *
- *                                                                              *
- * For the detailed description of the program and further references           *
- * to the description of the model please refer to                              *
- * http://arxiv.org/abs/1102.0273                                               *
- *                                                                              *
- * This code can be freely used and redistributed. However if you decide to     *
- * make modifications to the code, please, inform the authors.                  *
- * Any publication of results obtained using this code must include the         *
- * reference to arXiv:1102.0273 and the published version of it, when           *
- * available.                                                                   *
- *                                                                              *
- ********************************************************************************/
+*                                                                              *
+*             THERMINATOR 2: THERMal heavy-IoN generATOR 2                     *
+*                                                                              *
+* Version:                                                                     *
+*      Release, 2.0.3, 1 February 2011                                         *
+*                                                                              *
+* Authors:                                                                     *
+*      Mikolaj Chojnacki   (Mikolaj.Chojnacki@ifj.edu.pl)                      *
+*      Adam Kisiel         (kisiel@if.pw.edu.pl)                               *
+*      Wojciech Broniowski (Wojciech.Broniowski@ifj.edu.pl)                    *
+*      Wojciech Florkowski (Wojciech.Florkowski@ifj.edu.pl)                    *
+*                                                                              *
+* Project homepage:                                                            *
+*      http://therminator2.ifj.edu.pl/                                         *
+*                                                                              *
+* For the detailed description of the program and further references           *
+* to the description of the model please refer to                              *
+* http://arxiv.org/abs/1102.0273                                               *
+*                                                                              *
+* This code can be freely used and redistributed. However if you decide to     *
+* make modifications to the code, please, inform the authors.                  *
+* Any publication of results obtained using this code must include the         *
+* reference to arXiv:1102.0273 and the published version of it, when           *
+* available.                                                                   *
+*                                                                              *
+********************************************************************************/
+// clang-format on
 
 #ifndef _TH2_ENERGY_H_
-  #define _TH2_ENERGY_H_
+#define _TH2_ENERGY_H_
 
 #include "Vector3D.h"
 
-class Energy
-{
-  public:
-    Energy();
-    ~Energy();
+class Energy {
+public:
+  Energy();
+  ~Energy();
 
-    int    GetEnergyType() const;
-    double GetEnergy() const;
-    double GetEnergy(double aX, double aY, double aZ) const;
-    void   SetEnergy(double aEnergy);
-    void   SetEnergy(Vector3D* aEnergy);
+  int GetEnergyType() const;
+  double GetEnergy() const;
+  double GetEnergy(double aX, double aY, double aZ) const;
+  void SetEnergy(double aEnergy);
+  void SetEnergy(Vector3D* aEnergy);
 
-  private:
-    int       mEnergyType;
-    double    mEnergyConst;
-    Vector3D* mEnergyVar;
+private:
+  int mEnergyType;
+  double mEnergyConst;
+  Vector3D* mEnergyVar;
 };
 
 #endif
@@ -57,8 +58,8 @@ class Energy
 /*! @class Energy
  * @brief Class gives the local energy density @f$ \varepsilon @f$.
  *
- * If SetEnergy() is called with a Vector3D object it will return energy density at @f$ \varepsilon(x,y,z) @f$ 
- * in other case it will return a constant value of energy density.
+ * If SetEnergy() is called with a Vector3D object it will return energy density at @f$
+ * \varepsilon(x,y,z) @f$ in other case it will return a constant value of energy density.
  *
  * @fn Energy::Energy()
  * @brief Default constructor.

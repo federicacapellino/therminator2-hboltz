@@ -1,80 +1,82 @@
+// clang-format off
 /********************************************************************************
- *                                                                              *
- *             THERMINATOR 2: THERMal heavy-IoN generATOR 2                     *
- *                                                                              *
- * Version:                                                                     *
- *      Release, 2.0.3, 1 February 2011                                         *
- *                                                                              *
- * Authors:                                                                     *
- *      Mikolaj Chojnacki   (Mikolaj.Chojnacki@ifj.edu.pl)                      *
- *      Adam Kisiel         (kisiel@if.pw.edu.pl)                               *
- *      Wojciech Broniowski (Wojciech.Broniowski@ifj.edu.pl)                    *
- *      Wojciech Florkowski (Wojciech.Florkowski@ifj.edu.pl)                    *
- *                                                                              *
- * Project homepage:                                                            *
- *      http://therminator2.ifj.edu.pl/                                         *
- *                                                                              *
- * For the detailed description of the program and further references           *
- * to the description of the model please refer to                              *
- * http://arxiv.org/abs/1102.0273                                               *
- *                                                                              *
- * This code can be freely used and redistributed. However if you decide to     *
- * make modifications to the code, please, inform the authors.                  *
- * Any publication of results obtained using this code must include the         *
- * reference to arXiv:1102.0273 and the published version of it, when           *
- * available.                                                                   *
- *                                                                              *
- ********************************************************************************/
+*                                                                              *
+*             THERMINATOR 2: THERMal heavy-IoN generATOR 2                     *
+*                                                                              *
+* Version:                                                                     *
+*      Release, 2.0.3, 1 February 2011                                         *
+*                                                                              *
+* Authors:                                                                     *
+*      Mikolaj Chojnacki   (Mikolaj.Chojnacki@ifj.edu.pl)                      *
+*      Adam Kisiel         (kisiel@if.pw.edu.pl)                               *
+*      Wojciech Broniowski (Wojciech.Broniowski@ifj.edu.pl)                    *
+*      Wojciech Florkowski (Wojciech.Florkowski@ifj.edu.pl)                    *
+*                                                                              *
+* Project homepage:                                                            *
+*      http://therminator2.ifj.edu.pl/                                         *
+*                                                                              *
+* For the detailed description of the program and further references           *
+* to the description of the model please refer to                              *
+* http://arxiv.org/abs/1102.0273                                               *
+*                                                                              *
+* This code can be freely used and redistributed. However if you decide to     *
+* make modifications to the code, please, inform the authors.                  *
+* Any publication of results obtained using this code must include the         *
+* reference to arXiv:1102.0273 and the published version of it, when           *
+* available.                                                                   *
+*                                                                              *
+********************************************************************************/
+// clang-format on
 
 #ifndef _TH2_EVENT_GENERATOR_H_
-  #define _TH2_EVENT_GENERATOR_H_
-  
-#include <TFile.h>
-#include <TTree.h>
-#include <TString.h>
-#include "ParticleDB.h"
-#include "Integrator.h"
-#include "Event.h"
+#define _TH2_EVENT_GENERATOR_H_
+
 #include "Configurator.h"
+#include "Event.h"
+#include "Integrator.h"
+#include "ParticleDB.h"
+#include <TFile.h>
+#include <TString.h>
+#include <TTree.h>
 
 class EventGenerator {
-  public:
-    EventGenerator();
-    EventGenerator(Configurator *config, ParticleDB* aDB, Model *model);
-    ~EventGenerator();
+public:
+  EventGenerator();
+  EventGenerator(Configurator* config, ParticleDB* aDB, Model* model);
+  ~EventGenerator();
 
-    void GenerateEvents();
-    void AddLogEntry(const char* aEntry);
+  void GenerateEvents();
+  void AddLogEntry(const std::string& aEntry);
 
-  private:
-    void FindPreviousEventFiles();
-    void ReadParameters(Configurator *config);  
-    void SaveEvent();
-    void SaveAsRoot();
-    void SaveAsText();
-    UInt_t GetEventID() const ;
-    void SetEventID(int aEventIter)  ;
+private:
+  void ReadParameters(Configurator* config);
+  void Print(const std::string& msg) const;
+  void SaveEvent();
+  void SaveAsRoot();
+  void SaveAsText();
+  UInt_t GetEventID() const;
+  void SetEventID(int aEventIter);
+  TString EventFileName(int index) const;
 
-    ParticleDB*	mDB;
-    Integrator*	mInteg;
-    Event*	mEvent;
-    UInt_t mEventID;
-    TTree*	mParameterTree;
-    TTree*	mEventTree;
-    TTree*	mParticleTree;
-    TFile*	mFile;
-    int		mFileCounter;
-    int		mEventCounter;
-    int		mNumberOfEvents;
-    int		mEventExportType;
-    const int   kEventsPerFile;
+  ParticleDB* mDB;
+  Integrator* mInteg;
+  Event* mEvent;
+  UInt_t mEventID;
+  TTree* mParameterTree;
+  TTree* mEventTree;
+  TTree* mParticleTree;
+  TFile* mFile;
+  int mFileCounter;
+  int mEventCounter;
+  int mNumberOfEvents;
+  int mEventExportType;
+  const int kEventsPerFile;
 
-    int     mIntegrateSample;
-    TString mEventDIR ;
-    TString mLogName;
-    TString mTimeStamp ;
-
-    
+  int mIntegrateSample;
+  TString mRunID;
+  TString mEventDIR;
+  TString mLogName;
+  TString mTimeStamp;
 };
 
 #endif
@@ -88,37 +90,34 @@ class EventGenerator {
  */
 /*! @class EventGenerator
  * @brief Generates number of Event and saves them to ROOT type or text files.
- * 
+ *
  * The <c><b>THERMINATOR 2</b></c> main settings file <b>therminator.ini</b> options used here:
  * <table>
  *   <tr><th>Keyword</th>		<th>Description</th></tr>
  *   <tr><td>NumberOfEvents</td>	<td>number of events to be generated</td></tr>
- *   <tr><td>IntegrateSamples</td>	<td>number of Monte-Carlo samples used by Integrator</td></tr>
- *   <tr><td>EventDir</td>		<td>general director to store events, subdirectory is added by Model</td></tr>
- *   <tr><td>EventFileType</td>		<td>type of files to save events 
- * 					    <table>
- * 					      <tr><td><b>"root"</b></td><td>ROOT file : <b>eventXXX.root [default]</b></td></tr>
- * 					      <tr><td>"text"</td>	<td>TEXT file : <b>event.txt</b></td></tr>
- * 					      <tr><td>"root&text"</td>	<td>both ROOT and TEXT files</td></tr>
+ *   <tr><td>IntegrateSamples</td>	<td>number of Monte-Carlo samples used by
+ * Integrator</td></tr> <tr><td>EventDir</td>		<td>general director to store events,
+ * subdirectory is added by Model</td></tr> <tr><td>EventFileType</td>		<td>type of files to
+ * save events <table> <tr><td><b>"root"</b></td><td>ROOT file : <b>eventXXX.root
+ * [default]</b></td></tr> <tr><td>"text"</td>	<td>TEXT file : <b>event.txt</b></td></tr>
+ * 					      <tr><td>"root&text"</td>	<td>both ROOT and TEXT
+ * files</td></tr>
  * 					    </table>
  * 					</td></tr>
  *   <tr><td>LogFile</td>		<td>name and location of the LOG file</td></tr>
  * </table>
- * 
- * EventGenerator creates an Event object. For a given number of events the Event is called to generate primordial particles 
- * and to decay resonances. The Particle list is than saved to file, either a ROOT type file or a TEXT file or both.
- * 
- * In case the event directory already has some <b>eventXXX.root</b> EventGenerator save new files with the name counter 
- * set to continue the number sequence.<br />
- * 
- * EventGenerator also create a log entry to a <c>THERMINATOR 2</c> log file [default: <em>therminator.log</em>]. The log entry 
- * consists of:
- * <ul>
- *   <li> current time and date,
- *   <li> Model number (sModel)
- *   <li> directory the events are stored
- *   <li> initial event file number in this program run
- *   <li> last event file number in this program run  
+ *
+ * EventGenerator creates an Event object. For a given number of events the Event is called to
+ * generate primordial particles and to decay resonances. The Particle list is than saved to file,
+ * either a ROOT type file or a TEXT file or both.
+ *
+ * In case the event directory already has some <b>eventXXX.root</b> EventGenerator save new files
+ * with the name counter set to continue the number sequence.<br />
+ *
+ * EventGenerator also create a log entry to a <c>THERMINATOR 2</c> log file [default:
+ * <em>therminator.log</em>]. The log entry consists of: <ul> <li> current time and date, <li> Model
+ * number (sModel) <li> directory the events are stored <li> initial event file number in this
+ * program run <li> last event file number in this program run
  * </ul>
  *
  * @fn EventGenerator::EventGenerator()
@@ -135,8 +134,9 @@ class EventGenerator {
  * @brief Creates a given number of events and saves them to a set type of file.
  *
  * @fn void EventGenerator::SetEventsTemp()
- * @brief Creates a temporary file in the main <c><b>THERMINATOR 2</b></c> directory called <b>event_<aPID>.tmp</b>.
- * 
+ * @brief Creates a temporary file in the main <c><b>THERMINATOR 2</b></c> directory called
+ * <b>event_<aPID>.tmp</b>.
+ *
  * Default name is <b>event_0.tmp</b>.The file contains two lines:
  * <ul>
  *   <li> current directory where the event files are stored,

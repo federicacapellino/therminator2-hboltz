@@ -1,115 +1,117 @@
+// clang-format off
 /********************************************************************************
- *                                                                              *
- *             THERMINATOR 2: THERMal heavy-IoN generATOR 2                     *
- *                                                                              *
- * Version:                                                                     *
- *      Release, 2.0.3, 1 February 2011                                         *
- *                                                                              *
- * Authors:                                                                     *
- *      Mikolaj Chojnacki   (Mikolaj.Chojnacki@ifj.edu.pl)                      *
- *      Adam Kisiel         (kisiel@if.pw.edu.pl)                               *
- *      Wojciech Broniowski (Wojciech.Broniowski@ifj.edu.pl)                    *
- *      Wojciech Florkowski (Wojciech.Florkowski@ifj.edu.pl)                    *
- *                                                                              *
- * Project homepage:                                                            *
- *      http://therminator2.ifj.edu.pl/                                         *
- *                                                                              *
- * For the detailed description of the program and further references           *
- * to the description of the model please refer to                              *
- * http://arxiv.org/abs/1102.0273                                               *
- *                                                                              *
- * This code can be freely used and redistributed. However if you decide to     *
- * make modifications to the code, please, inform the authors.                  *
- * Any publication of results obtained using this code must include the         *
- * reference to arXiv:1102.0273 and the published version of it, when           *
- * available.                                                                   *
- *                                                                              *
- ********************************************************************************/
+*                                                                              *
+*             THERMINATOR 2: THERMal heavy-IoN generATOR 2                     *
+*                                                                              *
+* Version:                                                                     *
+*      Release, 2.0.3, 1 February 2011                                         *
+*                                                                              *
+* Authors:                                                                     *
+*      Mikolaj Chojnacki   (Mikolaj.Chojnacki@ifj.edu.pl)                      *
+*      Adam Kisiel         (kisiel@if.pw.edu.pl)                               *
+*      Wojciech Broniowski (Wojciech.Broniowski@ifj.edu.pl)                    *
+*      Wojciech Florkowski (Wojciech.Florkowski@ifj.edu.pl)                    *
+*                                                                              *
+* Project homepage:                                                            *
+*      http://therminator2.ifj.edu.pl/                                         *
+*                                                                              *
+* For the detailed description of the program and further references           *
+* to the description of the model please refer to                              *
+* http://arxiv.org/abs/1102.0273                                               *
+*                                                                              *
+* This code can be freely used and redistributed. However if you decide to     *
+* make modifications to the code, please, inform the authors.                  *
+* Any publication of results obtained using this code must include the         *
+* reference to arXiv:1102.0273 and the published version of it, when           *
+* available.                                                                   *
+*                                                                              *
+********************************************************************************/
+// clang-format on
 
 #ifndef _TH2_PARTICLE_TYPE_H_
-  #define _TH2_PARTICLE_TYPE_H_
+#define _TH2_PARTICLE_TYPE_H_
 
-#include <TString.h>
 #include "DecayChannel.h"
 #include "DecayTable.h"
+#include <TString.h>
 
 class ParticleType {
-  public:
-    ParticleType();
-    ParticleType(const ParticleType& aParticleType);
-    ~ParticleType();
+public:
+  ParticleType();
+  ParticleType(const ParticleType& aParticleType);
+  ~ParticleType();
 
-    int    GetNumber()		const;
-    const char* GetName()	const;
-    float  GetMass()		const;
-    float  GetGamma()		const;
-    float  GetSpin()		const;
-    int    GetBarionN()		const;
-    float  GetI()		const;
-    float  GetI3()		const;
-    int    GetStrangeN()	const;
-    int    GetCharmN()		const;
-    int    GetNumberQ()		const;
-    int    GetNumberAQ()	const;
-    int    GetNumberS()		const;
-    int    GetNumberAS()	const;
-    int    GetNumberC()		const;
-    int    GetNumberAC()	const;
-    int    GetCharge()		const;
-    int    GetPDGCode()		const;
-    double GetMaxIntegrand()	const;
-    double GetMultiplicity()	const;
-    int    GetDecayChannelCount2() const;
-    int    GetDecayChannelCount3() const;
-    
-    void  SetNumber(int aNumber);
-    void  SetName(const char *aName);
-    void  SetMass(float aMass);
-    void  SetGamma(float aGamma);
-    void  SetSpin(float aSpin);
-    void  SetBarionN(int aBarionN);
-    void  SetI(float aI);
-    void  SetI3(float aI3);
-    void  SetStrangeN(int aStrangeN);
-    void  SetCharmN(int aCharmN);
-    void  SetNumberQ(int aNq);
-    void  SetNumberAQ(int aNaq);
-    void  SetNumberS(int aNs);
-    void  SetNumberAS(int aNas);
-    void  SetNumberC(int aNc);
-    void  SetNumberAC(int aNac);
-    void  SetPDGCode(int aCode);
-    void  SetMaxIntegrand(double aMaxInt);
-    void  SetMultiplicity(double aMulti);
-    void  SetDecayChannelCount2(int aDCCount2);
-    void  SetDecayChannelCount3(int aDCCount3);
+  int GetNumber() const;
+  const char* GetName() const;
+  float GetMass() const;
+  float GetGamma() const;
+  float GetSpin() const;
+  int GetBarionN() const;
+  float GetI() const;
+  float GetI3() const;
+  int GetStrangeN() const;
+  int GetCharmN() const;
+  int GetNumberQ() const;
+  int GetNumberAQ() const;
+  int GetNumberS() const;
+  int GetNumberAS() const;
+  int GetNumberC() const;
+  int GetNumberAC() const;
+  int GetCharge() const;
+  int GetPDGCode() const;
+  double GetMaxIntegrand() const;
+  double GetMultiplicity() const;
+  int GetDecayChannelCount2() const;
+  int GetDecayChannelCount3() const;
 
-    DecayTable* GetTable() const;
-    void        AddDecayChannel(DecayChannel aChannel);
+  void SetNumber(int aNumber);
+  void SetName(const char* aName);
+  void SetMass(float aMass);
+  void SetGamma(float aGamma);
+  void SetSpin(float aSpin);
+  void SetBarionN(int aBarionN);
+  void SetI(float aI);
+  void SetI3(float aI3);
+  void SetStrangeN(int aStrangeN);
+  void SetCharmN(int aCharmN);
+  void SetNumberQ(int aNq);
+  void SetNumberAQ(int aNaq);
+  void SetNumberS(int aNs);
+  void SetNumberAS(int aNas);
+  void SetNumberC(int aNc);
+  void SetNumberAC(int aNac);
+  void SetPDGCode(int aCode);
+  void SetMaxIntegrand(double aMaxInt);
+  void SetMultiplicity(double aMulti);
+  void SetDecayChannelCount2(int aDCCount2);
+  void SetDecayChannelCount3(int aDCCount3);
 
-  private:
-    int		mNumber;	// particle type number
-    TString	mName;		// particle name
-    float	mMass;		// mass
-    float	mGamma;		// gamma
-    float	mSpin;		// spin
-    int		mBarionN;	// baryon number
-    float	mI;		// isospin
-    float	mI3;		// isospin 3rd component
-    int		mStrangeN;	// strangeness
-    int		mCharmN;	// charm
-    int		mNq;		// number of Q  quarks
-    int		mNaq;		// number of AQ quarks
-    int		mNs;		// number of S  quarks
-    int		mNas;		// number of AS quarks
-    int		mNc;		// number of C  quarks
-    int		mNac;   	// number of AC quarks
-    int		mPDGCode; 
-    double	mMaxIntegrand;	// maximal value of the integrand
-    double	mMultiplicity;	// average multiplicity
-    int		mDecayChannelCount2;      //number of channels in this case
-    int		mDecayChannelCount3;      //number of channels in this case
-    DecayTable*	mTable;
+  DecayTable* GetTable() const;
+  void AddDecayChannel(DecayChannel aChannel);
+
+private:
+  int mNumber;   // particle type number
+  TString mName; // particle name
+  float mMass;   // mass
+  float mGamma;  // gamma
+  float mSpin;   // spin
+  int mBarionN;  // baryon number
+  float mI;      // isospin
+  float mI3;     // isospin 3rd component
+  int mStrangeN; // strangeness
+  int mCharmN;   // charm
+  int mNq;       // number of Q  quarks
+  int mNaq;      // number of AQ quarks
+  int mNs;       // number of S  quarks
+  int mNas;      // number of AS quarks
+  int mNc;       // number of C  quarks
+  int mNac;      // number of AC quarks
+  int mPDGCode;
+  double mMaxIntegrand;    // maximal value of the integrand
+  double mMultiplicity;    // average multiplicity
+  int mDecayChannelCount2; // number of channels in this case
+  int mDecayChannelCount3; // number of channels in this case
+  DecayTable* mTable;
 };
 
 #endif
@@ -118,7 +120,8 @@ class ParticleType {
  * @brief Definition of ParticleType class. %Particle type properties.
  */
 /*! @class ParticleType
- * @brief Contains information on particle properties like: mass, spin, quark content, quantum numbers etc.
+ * @brief Contains information on particle properties like: mass, spin, quark content, quantum
+ * numbers etc.
  *
  * @fn ParticleType::ParticleType()
  * @brief Default constructor.
@@ -228,7 +231,7 @@ class ParticleType {
  * @param [in] aI particle isospin
  *
  * @fn void ParticleType::SetI3(float aI3)
- * @brief Set particle 3rd component of the isospin 
+ * @brief Set particle 3rd component of the isospin
  * @param [in] aI3 3rd component of the isospin
  *
  * @fn void ParticleType::SetStrangeN(int aStrangeN)

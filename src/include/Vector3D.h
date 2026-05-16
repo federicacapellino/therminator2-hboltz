@@ -1,92 +1,91 @@
+// clang-format off
 /********************************************************************************
- *                                                                              *
- *             THERMINATOR 2: THERMal heavy-IoN generATOR 2                     *
- *                                                                              *
- * Version:                                                                     *
- *      Release, 2.0.3, 1 February 2011                                         *
- *                                                                              *
- * Authors:                                                                     *
- *      Mikolaj Chojnacki   (Mikolaj.Chojnacki@ifj.edu.pl)                      *
- *      Adam Kisiel         (kisiel@if.pw.edu.pl)                               *
- *      Wojciech Broniowski (Wojciech.Broniowski@ifj.edu.pl)                    *
- *      Wojciech Florkowski (Wojciech.Florkowski@ifj.edu.pl)                    *
- *                                                                              *
- * Project homepage:                                                            *
- *      http://therminator2.ifj.edu.pl/                                         *
- *                                                                              *
- * For the detailed description of the program and further references           *
- * to the description of the model please refer to                              *
- * http://arxiv.org/abs/1102.0273                                               *
- *                                                                              *
- * This code can be freely used and redistributed. However if you decide to     *
- * make modifications to the code, please, inform the authors.                  *
- * Any publication of results obtained using this code must include the         *
- * reference to arXiv:1102.0273 and the published version of it, when           *
- * available.                                                                   *
- *                                                                              *
- ********************************************************************************/
+*                                                                              *
+*             THERMINATOR 2: THERMal heavy-IoN generATOR 2                     *
+*                                                                              *
+* Version:                                                                     *
+*      Release, 2.0.3, 1 February 2011                                         *
+*                                                                              *
+* Authors:                                                                     *
+*      Mikolaj Chojnacki   (Mikolaj.Chojnacki@ifj.edu.pl)                      *
+*      Adam Kisiel         (kisiel@if.pw.edu.pl)                               *
+*      Wojciech Broniowski (Wojciech.Broniowski@ifj.edu.pl)                    *
+*      Wojciech Florkowski (Wojciech.Florkowski@ifj.edu.pl)                    *
+*                                                                              *
+* Project homepage:                                                            *
+*      http://therminator2.ifj.edu.pl/                                         *
+*                                                                              *
+* For the detailed description of the program and further references           *
+* to the description of the model please refer to                              *
+* http://arxiv.org/abs/1102.0273                                               *
+*                                                                              *
+* This code can be freely used and redistributed. However if you decide to     *
+* make modifications to the code, please, inform the authors.                  *
+* Any publication of results obtained using this code must include the         *
+* reference to arXiv:1102.0273 and the published version of it, when           *
+* available.                                                                   *
+*                                                                              *
+********************************************************************************/
+// clang-format on
 
 #ifndef _TH2_VECTOR_3D_H_
-  #define _TH2_VECTOR_3D_H_
+#define _TH2_VECTOR_3D_H_
 
 #include <TString.h>
 
-class Vector3D
-{
-  public:
-// OPERATORS
-    double& operator()(unsigned int i, unsigned int j, unsigned int k);
+class Vector3D {
+public:
+  // OPERATORS
+  double& operator()(unsigned int i, unsigned int j, unsigned int k);
 
-// CLASS FUNCTIONS
-    Vector3D();
-    Vector3D(const char* aName,
-	     double aXmin, double aXmax, int aXpts,
-	     double aYmin, double aYmax, int aYpts,
-	     double aZmin, double aZmax, int aZpts);
-    Vector3D(const Vector3D& aVector);
-    ~Vector3D();
+  // CLASS FUNCTIONS
+  Vector3D();
+  Vector3D(const char* aName, double aXmin, double aXmax, int aXpts, double aYmin, double aYmax,
+           int aYpts, double aZmin, double aZmax, int aZpts);
+  Vector3D(const Vector3D& aVector);
+  ~Vector3D();
 
-    const char* GetName() const;
-    double      GetXMin() const;
-    double      GetXMax() const;
-    int         GetXPts() const;
-    double      GetYMin() const;
-    double      GetYMax() const;
-    int         GetYPts() const;
-    double      GetZMin() const;
-    double      GetZMax() const;
-    int         GetZPts() const;
+  const char* GetName() const;
+  double GetXMin() const;
+  double GetXMax() const;
+  int GetXPts() const;
+  double GetYMin() const;
+  double GetYMax() const;
+  int GetYPts() const;
+  double GetZMin() const;
+  double GetZMax() const;
+  int GetZPts() const;
 
-    double	Interpolate(double aX, double aY, double aZ);
-    Vector3D*	DerivativeX(const char* aName);
-    Vector3D*	DerivativeY(const char* aName);
-    Vector3D*	DerivativeZ(const char* aName);
+  double Interpolate(double aX, double aY, double aZ);
+  Vector3D* DerivativeX(const char* aName);
+  Vector3D* DerivativeY(const char* aName);
+  Vector3D* DerivativeZ(const char* aName);
 
-  private:
-    double	Interpolate1D(double aX);
-    double	Interpolate2D(double aX, double aY);
-    double	Interpolate3D(double aX, double aY, double aZ);
+private:
+  double Interpolate1D(double aX);
+  double Interpolate2D(double aX, double aY);
+  double Interpolate3D(double aX, double aY, double aZ);
 
-    inline int	  InitDerivative(int aIdx, double aAMin, double aAMax, int aAPts);
-    inline double Derivative(double aFin, double aFi, double aFip);
-    
-    TString	mVecName;
-    double***	mVec;
+  inline int InitDerivative(int aIdx, double aAMin, double aAMax, int aAPts);
+  inline double Derivative(double aFin, double aFi, double aFip);
 
-    double	mXmin, mXmax;
-    int		mXpts;
-    double	mDi;
+  TString mVecName;
+  double*** mVec;
 
-    double	mYmin, mYmax;
-    int		mYpts;
-    double	mDj;
+  double mXmin, mXmax;
+  int mXpts;
+  double mDi;
 
-    double	mZmin, mZmax;
-    int		mZpts;
-    double	mDk;
-    
-// used by InitDerivative() and Derivative()
-    static double mXin, mXi0, mXip, mX0, mXd;
+  double mYmin, mYmax;
+  int mYpts;
+  double mDj;
+
+  double mZmin, mZmax;
+  int mZpts;
+  double mDk;
+
+  // used by InitDerivative() and Derivative()
+  static double mXin, mXi0, mXip, mX0, mXd;
 };
 
 #endif
@@ -95,16 +94,18 @@ class Vector3D
  * @brief Definition of Vector3D class.
  */
 /*! @class Vector3D
- * @brief Class representing a three dimensional vector field. 
+ * @brief Class representing a three dimensional vector field.
  *
- * The table of numbers can be interpolated with a cubic method. Class also provides a simple calculation of the 
- * derivative along all three axes.
+ * The table of numbers can be interpolated with a cubic method. Class also provides a simple
+ * calculation of the derivative along all three axes.
  *
  * @fn Vector3D::Vector3D()
  * @brief Default constructor.
  *
- * @fn Vector3D::Vector3D(const char* aName, double aXmin, double aXmax, int aXpts, double aYmin, double aYmax, int aYpts, double aZmin, double aZmax, int aZpts)
- * @brief Initiates a three dimensional vector field of a given name and limiting range and number of points for each axis.
+ * @fn Vector3D::Vector3D(const char* aName, double aXmin, double aXmax, int aXpts, double aYmin,
+ * double aYmax, int aYpts, double aZmin, double aZmax, int aZpts)
+ * @brief Initiates a three dimensional vector field of a given name and limiting range and number
+ * of points for each axis.
  * @param [in] aName name of the vector field
  * @param [in] aXmin lower limit of X-axis
  * @param [in] aXmax higher limit of X-axis
@@ -158,7 +159,7 @@ class Vector3D
  *
  * @fn double Vector3D::GetZPts() const
  * @brief Returns the number of Z-axis points
- * 
+ *
  * @fn double Vector3D::Interpolate(double aX, double aY, double aZ)
  * @brief Returns an interpolated value of the vector field.
  * @param [in] aX x-coordinate

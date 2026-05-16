@@ -1,74 +1,79 @@
+// clang-format off
 /********************************************************************************
- *                                                                              *
- *             THERMINATOR 2: THERMal heavy-IoN generATOR 2                     *
- *                                                                              *
- * Version:                                                                     *
- *      Release, 2.0.3, 1 February 2011                                         *
- *                                                                              *
- * Authors:                                                                     *
- *      Mikolaj Chojnacki   (Mikolaj.Chojnacki@ifj.edu.pl)                      *
- *      Adam Kisiel         (kisiel@if.pw.edu.pl)                               *
- *      Wojciech Broniowski (Wojciech.Broniowski@ifj.edu.pl)                    *
- *      Wojciech Florkowski (Wojciech.Florkowski@ifj.edu.pl)                    *
- *                                                                              *
- * Project homepage:                                                            *
- *      http://therminator2.ifj.edu.pl/                                         *
- *                                                                              *
- * For the detailed description of the program and further references           *
- * to the description of the model please refer to                              *
- * http://arxiv.org/abs/1102.0273                                               *
- *                                                                              *
- * This code can be freely used and redistributed. However if you decide to     *
- * make modifications to the code, please, inform the authors.                  *
- * Any publication of results obtained using this code must include the         *
- * reference to arXiv:1102.0273 and the published version of it, when           *
- * available.                                                                   *
- *                                                                              *
- ********************************************************************************/
+*                                                                              *
+*             THERMINATOR 2: THERMal heavy-IoN generATOR 2                     *
+*                                                                              *
+* Version:                                                                     *
+*      Release, 2.0.3, 1 February 2011                                         *
+*                                                                              *
+* Authors:                                                                     *
+*      Mikolaj Chojnacki   (Mikolaj.Chojnacki@ifj.edu.pl)                      *
+*      Adam Kisiel         (kisiel@if.pw.edu.pl)                               *
+*      Wojciech Broniowski (Wojciech.Broniowski@ifj.edu.pl)                    *
+*      Wojciech Florkowski (Wojciech.Florkowski@ifj.edu.pl)                    *
+*                                                                              *
+* Project homepage:                                                            *
+*      http://therminator2.ifj.edu.pl/                                         *
+*                                                                              *
+* For the detailed description of the program and further references           *
+* to the description of the model please refer to                              *
+* http://arxiv.org/abs/1102.0273                                               *
+*                                                                              *
+* This code can be freely used and redistributed. However if you decide to     *
+* make modifications to the code, please, inform the authors.                  *
+* Any publication of results obtained using this code must include the         *
+* reference to arXiv:1102.0273 and the published version of it, when           *
+* available.                                                                   *
+*                                                                              *
+********************************************************************************/
+// clang-format on
 
+#include "Configurator.h"
+#include "Parser.h"
+#include "THGlobal.h"
+#include <cstring>
 #include <fstream>
 #include <sstream>
-#include <cstring>
-#include "Configurator.h"
-#include "THGlobal.h"
-#include "Parser.h"
 
 using namespace std;
 
-Configurator::Configurator()
-{
+Configurator::Configurator() {
   mParameters.clear();
 }
 
-Configurator::~Configurator()
-{
+Configurator::~Configurator() {
   mParameters.clear();
 }
-Configurator::Configurator(const string &filename)
-{
+Configurator::Configurator(const string& filename) {
   // Read in the database of particles
   auto tParser = make_unique<Parser>(filename.c_str());
   tParser->ReadINI(this);
 }
 
-TString Configurator::GetParameter(const char* aKeyword) noexcept(false)
-{
+TString Configurator::GetParameter(const char* aKeyword) noexcept(false) {
   vector<Parameter>::iterator Iter;
   for (Iter = mParameters.begin(); Iter != mParameters.end(); Iter++)
     if (Iter->keyword == aKeyword) {
-      PRINT_DEBUG_2("<Configurator::GetParameter>\tReturning value " << Iter->value << " for keyword " << Iter->keyword);
+      PRINT_DEBUG_2("<Configurator::GetParameter>\tReturning value "
+                    << Iter->value << " for keyword " << Iter->keyword);
       return Iter->value;
     }
-  throw *(new TString(aKeyword));
+  throw TString(aKeyword);
 }
 
-void Configurator::AddParameter(Parameter* aPar)
-{
+TString Configurator::GetParameter(const char* aKeyword, const char* aDefault) noexcept {
+  try {
+    return GetParameter(aKeyword);
+  } catch (TString&) {
+    return TString(aDefault);
+  }
+}
+
+void Configurator::AddParameter(Parameter* aPar) {
   mParameters.push_back(*aPar);
 }
 
-int Configurator::PrintParameters()
-{
+int Configurator::PrintParameters() {
   vector<Parameter>::iterator Iter;
   PRINT_MESSAGE("<Configurator::PrintParameters>");
   for (Iter = mParameters.begin(); Iter != mParameters.end(); Iter++)

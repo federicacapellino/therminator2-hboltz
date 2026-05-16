@@ -40,13 +40,6 @@
 #include "Model_HRG.h"
 #include "Model_BlastWave.h"
 
-
-//! These are some global functions that we will want to get rid of
-extern void ReadParameters();
-extern void ReadSHARE(ParticleDB* aPartDB);
-extern void CheckSHARE(ParticleDB* aPartDB);
-extern void AddLogEntry(const char* aEntry);
-
 #ifndef M_HBARC
 #define M_HBARC  0.19732697
 #endif
@@ -144,15 +137,7 @@ int main(int argc, char **argv)
   auto tMainConfig = std::make_unique<Configurator>("./events.ini");
   tMainConfig->PrintParameters() ;
 
-  // Find the particles
-  TString tShareDir ;
-  try {
-    tShareDir = tMainConfig->GetParameter("ShareDir"); 
-  } catch (TString tError) {
-    PRINT_MESSAGE("\tDid not find SHARE input file location.");
-    exit(_ERROR_CONFIG_PARAMETER_NOT_FOUND_);
-  }
-  auto tPartDB     = std::make_unique<ParticleDB>(tShareDir);
+  auto tPartDB = std::make_unique<ParticleDB>(tMainConfig->GetParameter("ShareDir", ""));
 
   // Build the model
   Model_BlastWave bw("./blastwave.ini") ;

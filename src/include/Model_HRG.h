@@ -39,12 +39,14 @@ public:
   Model_HRG();
   ~Model_HRG();
 
-  double GetIntegrand(ParticleType* aPartType);
-  void AddParameterBranch(TTree* aTree);
+  double GetIntegrand(ParticleType* aPartType, ParticleCoor& coor) override;
+  double GetHyperCubeVolume() override;
+  void AddParameterBranch(TTree* aTree) override;
 
 private:
-  double mTemperature; // model parameter #1
+  double mTemperature;
   double mSize;
+  double mHyperCube;
   void Description();
 };
 

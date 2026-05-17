@@ -58,9 +58,7 @@ void Integrator::GenerateParticles(ParticleType* aPartType, int aPartCount,
                                    list<Particle>* aParticles) {
   int tIter = 0;
   double tFMax;
-  double tVal;
-  double tValTest;
-  Particle* tParticle;
+  ParticleCoor coor;
 
   PRINT_DEBUG_3("Integrator::GenerateParticles\t "
                 << aPartType->GetName() << " B:" << aPartType->GetBarionN()
@@ -72,14 +70,12 @@ void Integrator::GenerateParticles(ParticleType* aPartType, int aPartCount,
   // returned by get integrand.
   tFMax = aPartType->GetMaxIntegrand();
   while (tIter < aPartCount) {
-    tVal = mFOModel->GetIntegrand(aPartType);
-    tValTest = gRandom->Rndm() * tFMax;
-    if (tValTest < tVal) {
-      tParticle = new Particle(aPartType);
-      mFOModel->SetParticlePX(tParticle);
-      aParticles->push_back(*tParticle);
+    double tVal = mFOModel->GetIntegrand(aPartType, coor);
+    if (gRandom->Rndm() * tFMax < tVal) {
+      aParticles->emplace_back(aPartType);
+      aParticles->back().SetParticlePX(coor.e, coor.px, coor.py, coor.pz,
+                                       coor.t, coor.x, coor.y, coor.z, 1.0);
       tIter++;
-      delete tParticle;
     }
   }
 }
@@ -185,8 +181,9 @@ double Integrator::Integrate(ParticleType* aPartType) {
   // - Generate mNSamples over a given hypercube
   // - Evaluate the integrand at each of these points
   // - The mean multiplicity is the HyperCubeVolume/NSamples
+  ParticleCoor coor;
   for (tIter = 0; tIter < mNSamples; tIter++) {
-    tVal = mFOModel->GetIntegrand(aPartType);
+    tVal = mFOModel->GetIntegrand(aPartType, coor);
     if (tVal > tMaxInt) {
       tMaxInt = tVal;
     }

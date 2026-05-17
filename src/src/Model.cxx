@@ -36,8 +36,7 @@
 
 using namespace std;
 
-Model::Model()
-    : Xt(0.0), Xx(0.0), Xy(0.0), Xz(0.0), Pe(0.0), Px(0.0), Py(0.0), Pz(0.0), mHyperCube(0.0) {
+Model::Model() {
   mName = "";
   mHash = "";
   mDescription = "";
@@ -50,14 +49,6 @@ void Model::AddParameterBranch(TTree* aTree) {
 
   tPar.dummy = -1.0;
   aTree->Branch(_MODEL_T_BRANCH_, &tPar, _MODEL_T_FORMAT_);
-}
-
-void Model::SetParticlePX(Particle* aParticle) {
-  aParticle->SetParticlePX(Pe, Px, Py, Pz, Xt, Xx, Xy, Xz);
-}
-
-double Model::GetHyperCubeVolume() {
-  return mHyperCube;
 }
 
 const char* Model::GetHash() {

@@ -48,11 +48,10 @@ public:
   Model();
   virtual ~Model();
 
-  virtual double GetIntegrand(ParticleType* aPartType) = 0;
+  virtual double GetIntegrand(ParticleType* aPartType, ParticleCoor& coor) = 0;
+  virtual double GetHyperCubeVolume() = 0;
   virtual void AddParameterBranch(TTree* aTree);
 
-  void SetParticlePX(Particle* aParticle);
-  double GetHyperCubeVolume();
   const char* GetHash();
   const char* GetName();
   const char* GetDescription();
@@ -60,9 +59,6 @@ public:
 protected:
   void CalculateHash(TString aPreHash);
 
-  double Xt, Xx, Xy, Xz;
-  double Pe, Px, Py, Pz;
-  double mHyperCube;
   TString mHash;
   TString mName;
   TString mDescription;

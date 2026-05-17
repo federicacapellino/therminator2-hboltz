@@ -40,8 +40,9 @@ public:
   Model_BlastWave(const TString& modelini);
   ~Model_BlastWave();
 
-  double GetIntegrand(ParticleType* aPartType);
-  void AddParameterBranch(TTree* aTree);
+  double GetIntegrand(ParticleType* aPartType, ParticleCoor& coor) override;
+  double GetHyperCubeVolume() override;
+  void AddParameterBranch(TTree* aTree) override;
 
 protected:
   double mRapPSRange;
@@ -52,6 +53,7 @@ protected:
   Thermodynamics* mThermo;
 
 private:
+  double mHyperCube;
   void Description();
   void ReadParameters(const TString& modelini);
 };

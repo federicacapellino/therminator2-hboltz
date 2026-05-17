@@ -55,7 +55,9 @@ Model_HRG::Model_HRG() {
 
 Model_HRG::~Model_HRG() {}
 
-double Model_HRG::GetIntegrand(ParticleType* aPartType) {
+double Model_HRG::GetHyperCubeVolume() { return mHyperCube; }
+
+double Model_HRG::GetIntegrand(ParticleType* aPartType, ParticleCoor& coor) {
 
   double Spin = aPartType->GetSpin();
 
@@ -84,19 +86,21 @@ double Model_HRG::GetIntegrand(ParticleType* aPartType) {
 
   double PdotU = Hypot(aPartType->GetMass(), P);
 
-  double Integrand = (2.0 * Spin + 1.0) * 1.0 / kTwoPi3 * pow(P, 2) * dP * 1.0 /
+  double integrand = (2.0 * Spin + 1.0) * 1.0 / kTwoPi3 * pow(P, 2) * dP * 1.0 /
                      (Exp((PdotU) / mTemperature) + tStatistics);
 
-  // Return values
-  Xt = 0.;
-  Xx = gRandom->Uniform(0., mSize);
-  Xy = gRandom->Uniform(0., mSize);
-  Xz = gRandom->Uniform(0., mSize);
-  Pe = PdotU;
-  Px = P * sinP * cos(phiP);
-  Py = P * sinP * sin(phiP);
-  Pz = P * cosP;
-  return Integrand;
+  // particle X and P coordinates
+  coor.mass = aPartType->GetMass();
+  coor.t  = 0.0;
+  coor.x  = gRandom->Uniform(0., mSize);
+  coor.y  = gRandom->Uniform(0., mSize);
+  coor.z  = gRandom->Uniform(0., mSize);
+  coor.e  = PdotU;
+  coor.px = P * sinP * cos(phiP);
+  coor.py = P * sinP * sin(phiP);
+  coor.pz = P * cosP;
+  coor.w  = integrand * mHyperCube;
+  return integrand;
 }
 
 void Model_HRG::Description() {

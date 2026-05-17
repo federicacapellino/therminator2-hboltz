@@ -47,7 +47,7 @@ Particle::Particle(ParticleType* aType) : ParticleCoor(), mPartType(aType) {
   pid = mPartType->GetPDGCode();
   fatherpid = pid;
   rootpid = pid;
-  eid = EIDi;
+  eid = EIDi++;
   fathereid = -1;
 }
 
@@ -83,7 +83,6 @@ void Particle::SetParticlePX(double aPe, double aPx, double aPy, double aPz, dou
   e = aPe; px = aPx; py = aPy; pz = aPz;
   t = aXt; x = aXx; y = aXy; z = aXz;
   w = aWeight;
-  eid = EIDi++;
 }
 
 void Particle::SetParticlePX(double aPe, double aPx, double aPy, double aPz, double aXt, double aXx,
@@ -94,7 +93,6 @@ void Particle::SetParticlePX(double aPe, double aPx, double aPy, double aPz, dou
   rootpid   = aFather->rootpid;
   fathereid = aFather->eid;
   w         = aFather->w;
-  eid = EIDi++;
 }
 
 const char* Particle::MakeTEXTEntry() {

@@ -53,7 +53,9 @@ Model_BlastWave::~Model_BlastWave() {
   delete mThermo;
 }
 
-double Model_BlastWave::GetIntegrand(ParticleType* aPartType) {
+double Model_BlastWave::GetHyperCubeVolume() { return mHyperCube; }
+
+double Model_BlastWave::GetIntegrand(ParticleType* aPartType, ParticleCoor& coor) {
   double dSigmaP, PdotU;
   double Spin, Statistics;
   double Tau, Rho, PhiS, RapS;
@@ -83,19 +85,22 @@ double Model_BlastWave::GetIntegrand(ParticleType* aPartType) {
   // Invariants
   PdotU = 1.0 / Sqrt(1 - mVt * mVt) * (Mt * CosH(RapS - RapP) - mVt * Pt * Cos(PhiS - PhiP));
   dSigmaP = Tau * Rho * Mt * CosH(RapS - RapP);
-  // particle X and P coordinates
-  Xt = Tau * CosH(RapS);
-  Xx = Rho * Cos(PhiS);
-  Xy = Rho * Sin(PhiS);
-  Xz = Tau * SinH(RapS);
-  Pe = Mt * CosH(RapP);
-  Px = Pt * Cos(PhiP);
-  Py = Pt * Sin(PhiP);
-  Pz = Mt * SinH(RapP);
   // integrand
-  return (2.0 * Spin + 1.0) * 1.0 / kTwoPi3 * Pt * dPt * dSigmaP * 1.0 /
-         (Exp((PdotU - mThermo->GetChemicalPotential(aPartType)) / mThermo->GetTemperature()) +
-          Statistics);
+  double integrand = (2.0 * Spin + 1.0) * 1.0 / kTwoPi3 * Pt * dPt * dSigmaP * 1.0 /
+                     (Exp((PdotU - mThermo->GetChemicalPotential(aPartType)) / mThermo->GetTemperature()) +
+                      Statistics);
+  // particle X and P coordinates
+  coor.mass = aPartType->GetMass();
+  coor.t  = Tau * CosH(RapS);
+  coor.x  = Rho * Cos(PhiS);
+  coor.y  = Rho * Sin(PhiS);
+  coor.z  = Tau * SinH(RapS);
+  coor.e  = Mt * CosH(RapP);
+  coor.px = Pt * Cos(PhiP);
+  coor.py = Pt * Sin(PhiP);
+  coor.pz = Mt * SinH(RapP);
+  coor.w  = integrand * mHyperCube;
+  return integrand;
 }
 
 void Model_BlastWave::Description() {

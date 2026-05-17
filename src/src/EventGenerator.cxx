@@ -44,11 +44,12 @@ using namespace std;
 EventGenerator::EventGenerator()
     : mDB(0), mInteg(0), mEvent(0), mParticleTree(0), mFile(0), mFileCounter(0), mEventCounter(0),
       mNumberOfEvents(0), mEventExportType(0), kEventsPerFile(_EVENTS_PER_FILE_),
-      mIntegrateSample(0) {}
+      mIntegrateSample(0), mLog(std::clog) {}
 
-EventGenerator::EventGenerator(Configurator* config, ParticleDB* aDB, Model* model)
+EventGenerator::EventGenerator(Configurator* config, ParticleDB* aDB, Model* model,
+                               std::ostream& log)
     : mDB(aDB), mParticleTree(0), mFile(0), mFileCounter(0), mEventCounter(0), mNumberOfEvents(0),
-      mEventExportType(0), kEventsPerFile(_EVENTS_PER_FILE_) {
+      mEventExportType(0), kEventsPerFile(_EVENTS_PER_FILE_), mLog(log) {
   TDatime tDate;
   tDate.Set();
   mTimeStamp = tDate.AsSQLString();
@@ -257,7 +258,6 @@ void EventGenerator::ReadParameters(Configurator* config) {
     PRINT_MESSAGE("\tDid not find one of the necessary parameters in the parameters file.");
     exit(_ERROR_CONFIG_PARAMETER_NOT_FOUND_);
   }
-  mLogName = config->GetParameter("LogFile", "");
   if (tExportType == "root")
     mEventExportType = 0;
   else if (tExportType == "text")
@@ -288,18 +288,10 @@ unsigned int EventGenerator::GetEventID() const {
 }
 
 void EventGenerator::Print(const std::string& msg) const {
-  std::cout << "[" << mRunID << "]\t" << msg << std::endl;
+  mLog << "[" << mRunID << "]\t" << msg << '\n';
 }
 
 void EventGenerator::AddLogEntry(const std::string& aEntry) {
-  TString tLogName;
   TDatime tDate;
-  std::ofstream tFile;
-
-  tFile.open(mLogName, std::ios_base::app);
-  if (static_cast<long>(tFile.tellp()) == 0) {
-    tFile << "# THERMINATOR 2 Log File" << std::endl;
-  }
-  tFile << '[' << tDate.AsSQLString() << "]\t" << mRunID << "\t" << aEntry << std::endl;
-  tFile.close();
+  mLog << '[' << tDate.AsSQLString() << "]\t" << mRunID << "\t" << aEntry << '\n';
 }

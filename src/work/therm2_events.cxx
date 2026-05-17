@@ -41,58 +41,25 @@
 
 static void MessageIntro();
 
-// Returns the model ini path and sets modelCode based on events.ini settings.
+// Returns the model code and model ini path from events.ini settings.
 // Exits on unknown model name or missing parameters.
 static std::pair<int, TString> ReadModelConfig(Configurator* config) {
   TString tModel;
-  TString tModelINI;
   int tModelCode = -1;
   try {
-    tModelINI = config->GetParameter("FreezeOutDir");
-    tModelINI.Prepend("./");
     tModel = config->GetParameter("FreezeOutModel");
-    if (tModel == "BlastWave") {
-      tModelCode = 1;
-      tModelINI += "blastwave.ini";
-    } else if (tModel == "BWAVT") {
-      tModelCode = 2;
-      tModelINI += "bwa.ini";
-    } else if (tModel == "BWAVTDelay") {
-      tModelCode = 3;
-      tModelINI += "bwa.ini";
-    } else if (tModel == "BWAVLinear") {
-      tModelCode = 4;
-      tModelINI += "bwa.ini";
-    } else if (tModel == "BWAVLinearDelay") {
-      tModelCode = 5;
-      tModelINI += "bwa.ini";
-    } else if (tModel == "BWAVLinearFormation") {
-      tModelCode = 6;
-      tModelINI += "bwa.ini";
-    } else if (tModel == "Lhyquid3D") {
-      tModelCode = 10;
-      tModelINI += "lhyquid3d.ini";
-    } else if (tModel == "Lhyquid2DBI") {
-      tModelCode = 11;
-      tModelINI += "lhyquid2dbi.ini";
-    } else if (tModel == "HRG") {
-      tModelCode = 99;
-    } else {
-      PRINT_MESSAGE("<therm2_events>\tUnknown FreezeOutModel: " << tModel);
-      exit(_ERROR_GENERAL_MODEL_UNKNOWN_);
-    }
   } catch (TString& tError) {
     PRINT_MESSAGE("<therm2_events>\tCaught exception " << tError);
     PRINT_MESSAGE("\tDid not find one of the necessary parameters in the parameters file.");
     exit(_ERROR_CONFIG_PARAMETER_NOT_FOUND_);
   }
-  // Optional custom ini override
-  TString tCustom = config->GetParameter("FreezeOutModelINI", "");
-  if (!tCustom.IsNull()) {
-    PRINT_MESSAGE("<therm2_events>\tUsing custom Freeze-Out-Model INI file " << tCustom);
-    tModelINI = tCustom;
+  TString tModelINI = config->GetParameter("FreezeOutModelINI", "");
+  if      (tModel == "BlastWave") tModelCode = 1;
+  else if (tModel == "HRG")       tModelCode = 99;
+  else {
+    PRINT_MESSAGE("<therm2_events>\tUnknown FreezeOutModel: " << tModel);
+    exit(_ERROR_GENERAL_MODEL_UNKNOWN_);
   }
-
   return {tModelCode, tModelINI};
 }
 
@@ -110,16 +77,18 @@ static std::unique_ptr<Model> CreateModel(int modelCode, const TString& modelINI
 
 int main(int argc, char** argv) {
   std::string iniFile = "events.ini";
+  int seed = 0;
 
   CLI::App app{"Therminator 2 event generator"};
   app.add_option("ini", iniFile, "main settings file")->default_str("events.ini");
+  app.add_option("--seed", seed, "random seed (0 = unique seed from clock, default)")->default_val(0);
   CLI11_PARSE(app, argc, argv);
 
   MessageIntro();
 
   auto tConfig = std::make_unique<Configurator>(iniFile);
 
-  gRandom->SetSeed(tConfig->GetParameter("Seed", "0").Atoi());
+  gRandom->SetSeed(seed);
 
   auto [modelCode, modelINI] = ReadModelConfig(tConfig.get());
 

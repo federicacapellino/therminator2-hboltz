@@ -103,6 +103,9 @@ ParticleDB::ParticleDB(const TString& path) {
     }
   }
 
+  if (!tPath.EndsWith("/"))
+    tPath += "/";
+
   ReadSHARE(this, tPath);
   CheckSHARE(this);
 }

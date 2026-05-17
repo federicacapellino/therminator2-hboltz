@@ -38,11 +38,13 @@
 #include <TFile.h>
 #include <TString.h>
 #include <TTree.h>
+#include <iostream>
 
 class EventGenerator {
 public:
   EventGenerator();
-  EventGenerator(Configurator* config, ParticleDB* aDB, Model* model);
+  EventGenerator(Configurator* config, ParticleDB* aDB, Model* model,
+                 std::ostream& log = std::clog);
   ~EventGenerator();
 
   void GenerateEvents();
@@ -75,8 +77,8 @@ private:
   int mIntegrateSample;
   TString mRunID;
   TString mEventDIR;
-  TString mLogName;
   TString mTimeStamp;
+  std::ostream& mLog;
 };
 
 #endif
@@ -104,7 +106,6 @@ private:
  * files</td></tr>
  * 					    </table>
  * 					</td></tr>
- *   <tr><td>LogFile</td>		<td>name and location of the LOG file</td></tr>
  * </table>
  *
  * EventGenerator creates an Event object. For a given number of events the Event is called to

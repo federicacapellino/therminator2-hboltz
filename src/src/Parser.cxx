@@ -93,8 +93,6 @@ void Parser::ReadINI(Configurator* aINI) {
 }
 
 void Parser::ReadSHAREParticles(ParticleDB* aDB) {
-  istringstream* iss;
-  ParticleType* tPartBuf;
   char buff[200];
   char name[20];
   double mass, gamma, spin, I, I3, Nq, Ns, Naq, Nas, Nc, Nac, MC;
@@ -104,37 +102,35 @@ void Parser::ReadSHAREParticles(ParticleDB* aDB) {
     mFile.getline(buff, 200);
     if (!(*buff) || (*buff == '#'))
       continue;
-    iss = new istringstream(buff);
-    (*iss) >> name >> mass >> gamma >> spin >> I >> I3 >> Nq >> Ns >> Naq >> Nas >> Nc >> Nac >> MC;
+    istringstream iss(buff);
+    iss >> name >> mass >> gamma >> spin >> I >> I3 >> Nq >> Ns >> Naq >> Nas >> Nc >> Nac >> MC;
     number++;
     PRINT_DEBUG_2('\t' << number << " " << name << " " << mass << " " << gamma << " " << spin << " "
                        << I << " " << I3 << " " << Nq << " " << Naq << " " << Ns << " " << Nas
                        << " " << Nc << " " << Nac << " " << MC);
-    tPartBuf = new ParticleType();
-    tPartBuf->SetNumber(number);
-    tPartBuf->SetName(name);
-    tPartBuf->SetMass(mass);
-    tPartBuf->SetGamma(gamma);
-    tPartBuf->SetSpin(spin);
-    tPartBuf->SetBarionN(static_cast<int>((Nq + Ns + Nc) / 3. - (Naq + Nas + Nac) / 3.));
-    tPartBuf->SetI(I);
-    tPartBuf->SetI3(I3);
-    tPartBuf->SetStrangeN(static_cast<int>(Nas - Ns));
-    tPartBuf->SetCharmN(static_cast<int>(Nc - Nac));
-    tPartBuf->SetNumberQ(static_cast<int>(Nq));
-    tPartBuf->SetNumberQ(static_cast<int>(Naq));
-    tPartBuf->SetNumberQ(static_cast<int>(Ns));
-    tPartBuf->SetNumberQ(static_cast<int>(Nas));
-    tPartBuf->SetNumberQ(static_cast<int>(Nc));
-    tPartBuf->SetNumberQ(static_cast<int>(Nac));
-    tPartBuf->SetPDGCode(static_cast<int>(MC));
-    aDB->AddParticleType(tPartBuf);
-    delete iss;
+    ParticleType tPartBuf;
+    tPartBuf.SetNumber(number);
+    tPartBuf.SetName(name);
+    tPartBuf.SetMass(mass);
+    tPartBuf.SetGamma(gamma);
+    tPartBuf.SetSpin(spin);
+    tPartBuf.SetBarionN(static_cast<int>((Nq + Ns + Nc) / 3. - (Naq + Nas + Nac) / 3.));
+    tPartBuf.SetI(I);
+    tPartBuf.SetI3(I3);
+    tPartBuf.SetStrangeN(static_cast<int>(Nas - Ns));
+    tPartBuf.SetCharmN(static_cast<int>(Nc - Nac));
+    tPartBuf.SetNumberQ(static_cast<int>(Nq));
+    tPartBuf.SetNumberQ(static_cast<int>(Naq));
+    tPartBuf.SetNumberQ(static_cast<int>(Ns));
+    tPartBuf.SetNumberQ(static_cast<int>(Nas));
+    tPartBuf.SetNumberQ(static_cast<int>(Nc));
+    tPartBuf.SetNumberQ(static_cast<int>(Nac));
+    tPartBuf.SetPDGCode(static_cast<int>(MC));
+    aDB->AddParticleType(&tPartBuf);
   }
 }
 
 void Parser::ReadSHAREDecays(ParticleDB* aDB) {
-  istringstream* iss;
   char buff[200];
   char tFather[20], tDaughter1[20], tDaughter2[20], tDaughter3[20];
   double tBRatio, tRatio;
@@ -144,48 +140,44 @@ void Parser::ReadSHAREDecays(ParticleDB* aDB) {
     mFile.getline(buff, 200);
     if (!(*buff) || (*buff == '#'))
       continue;
-    iss = new istringstream(buff);
-    *iss >> tFather >> tDaughter1 >> tDaughter2 >> tDaughter3;
+    istringstream iss(buff);
+    iss >> tFather >> tDaughter1 >> tDaughter2 >> tDaughter3;
     if (!aDB->ExistsParticleType(tFather)) {
       PRINT_MESSAGE("<Parser::ReadSHAREDecay>\tDid not find the father particle: " << tFather);
       PRINT_MESSAGE("\tNot adding channel");
-      delete iss;
       continue;
     }
     if (!aDB->ExistsParticleType(tDaughter1)) {
       PRINT_MESSAGE(
           "<Parser::ReadSHAREDecay>\tDid not find the daughter 1 particle: " << tDaughter1);
       PRINT_MESSAGE("\tNot adding channel");
-      delete iss;
       continue;
     }
     if (!aDB->ExistsParticleType(tDaughter2)) {
       PRINT_MESSAGE(
           "<Parser::ReadSHAREDecay>\tDid not find the daughter 2 particle: " << tDaughter2);
       PRINT_MESSAGE("\tNot adding channel");
-      delete iss;
       continue;
     }
     if ((*tDaughter3 > 65) && (*tDaughter3 < 122) && (!aDB->ExistsParticleType(tDaughter3))) {
       PRINT_MESSAGE(
           "<Parser::ReadSHAREDecay>\tDid not find the daughter 3 particle: " << tDaughter3);
       PRINT_MESSAGE("\tNot adding channel");
-      delete iss;
       continue;
     }
     PRINT_DEBUG_2("\tDecay channel for " << tFather);
     if ((*tDaughter3 > 65) && (*tDaughter3 < 122)) {
       // check if first char is a letter - if yes then 3-body decay
-      *iss >> tBRatio >> CGcoeff;
+      iss >> tBRatio >> CGcoeff;
       PRINT_DEBUG_2("\t\tBR (" << tBRatio << ")");
       if (aDB->GetParticleType(tDaughter1)->GetMass() +
               aDB->GetParticleType(tDaughter2)->GetMass() +
               aDB->GetParticleType(tDaughter3)->GetMass() <
           aDB->GetParticleType(tFather)->GetMass()) {
-        DecayChannel* newChannel = new DecayChannel(tBRatio, aDB->GetParticleTypeIndex(tDaughter1),
-                                                    aDB->GetParticleTypeIndex(tDaughter2),
-                                                    aDB->GetParticleTypeIndex(tDaughter3));
-        aDB->GetParticleType(tFather)->AddDecayChannel(*newChannel);
+        DecayChannel newChannel(tBRatio, aDB->GetParticleTypeIndex(tDaughter1),
+                               aDB->GetParticleTypeIndex(tDaughter2),
+                               aDB->GetParticleTypeIndex(tDaughter3));
+        aDB->GetParticleType(tFather)->AddDecayChannel(newChannel);
         aDB->GetParticleType(tFather)->SetDecayChannelCount3(
             aDB->GetParticleType(tFather)->GetDecayChannelCount3() + 1);
         PRINT_DEBUG_2("\t\tAdding 3-body decay channel:     " << tDaughter1 << " + " << tDaughter2
@@ -201,7 +193,7 @@ void Parser::ReadSHAREDecays(ParticleDB* aDB) {
     } else {
       // 2-body decay
       tBRatio = atof(tDaughter3);
-      *iss >> CGcoeff;
+      iss >> CGcoeff;
       // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       if (CGcoeff) { // complete branching ratio by Clebsch-Gordan coefficient
         double j1, m1, j2, m2, J, M, CB;
@@ -241,9 +233,9 @@ void Parser::ReadSHAREDecays(ParticleDB* aDB) {
       if (aDB->GetParticleType(tDaughter1)->GetMass() +
               aDB->GetParticleType(tDaughter2)->GetMass() <
           aDB->GetParticleType(tFather)->GetMass()) {
-        DecayChannel* newChannel = new DecayChannel(tRatio, aDB->GetParticleTypeIndex(tDaughter1),
-                                                    aDB->GetParticleTypeIndex(tDaughter2), -1);
-        aDB->GetParticleType(tFather)->AddDecayChannel(*newChannel);
+        DecayChannel newChannel(tRatio, aDB->GetParticleTypeIndex(tDaughter1),
+                               aDB->GetParticleTypeIndex(tDaughter2), -1);
+        aDB->GetParticleType(tFather)->AddDecayChannel(newChannel);
         aDB->GetParticleType(tFather)->SetDecayChannelCount2(
             aDB->GetParticleType(tFather)->GetDecayChannelCount2() + 1);
         PRINT_DEBUG_2("\t\tAdding 2-body decay channel:     " << tDaughter1 << " + " << tDaughter2);
@@ -254,7 +246,6 @@ void Parser::ReadSHAREDecays(ParticleDB* aDB) {
                              aDB->GetParticleType(tDaughter2)->GetMass() -
                              aDB->GetParticleType(tFather)->GetMass());
     }
-    delete iss;
   }
 }
 

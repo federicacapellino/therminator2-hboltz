@@ -111,6 +111,7 @@ bool Integrator::SetMultiplicities(ParticleDB* aDB, const TString& filename) {
       tFileIn >> tMaxInt >> tMulti;
       aDB->GetParticleType(tPart)->SetMaxIntegrand(tMaxInt);
       aDB->GetParticleType(tPart)->SetMultiplicity(tMulti);
+
       PRINT_DEBUG_2("\t" << tPart << " " << tMaxInt << " " << tMulti);
     }
 
@@ -137,8 +138,9 @@ bool Integrator::SetMultiplicities(ParticleDB* aDB, const TString& filename) {
       // Loop over particles writing the FO function maximum and multiplicity
       for (int tIter = 0; tIter < aDB->GetParticleTypeCount(); tIter++) {
         // Main step of sampling the fo function many times for a given particle
-        tMulti = Integrate(aDB->GetParticleType(tIter));
-        tMaxInt = aDB->GetParticleType(tIter)->GetMaxIntegrand();
+        tMulti = Integrate(aDB->GetParticleType(tIter), tMaxInt);
+        aDB->GetParticleType(tIter)->SetMaxIntegrand(tMaxInt);
+        aDB->GetParticleType(tIter)->SetMultiplicity(tMulti);
 
         // Write the results to the multiplicity files
         tFileOut << aDB->GetParticleType(tIter)->GetName() << '\t' << tMaxInt << '\t' << tMulti
@@ -167,31 +169,18 @@ bool Integrator::SetMultiplicities(ParticleDB* aDB, const TString& filename) {
   return false; // No path to this statement
 }
 
-double Integrator::Integrate(ParticleType* aPartType) {
-  double tMaxInt;
-  double tMulti;
-  double tVal;
-  int tIter;
+double Integrator::Integrate(ParticleType* aPartType, double& aMaxInt) {
+  double tMulti = 0.0;
+  aMaxInt = 0.0;
 
-  // For the given particle determine the Max of integrand and the compute the
-  // multiplicity. This uses the member frunctions of the freezeout model.
-  tMaxInt = 0.0;
-  tMulti = 0.0;
-
-  // - Generate mNSamples over a given hypercube
-  // - Evaluate the integrand at each of these points
-  // - The mean multiplicity is the HyperCubeVolume/NSamples
+  // Sample mNSamples points over the hypercube, accumulate the mean and track the maximum.
   ParticleCoor coor;
-  for (tIter = 0; tIter < mNSamples; tIter++) {
-    tVal = mFOModel->GetIntegrand(aPartType, coor);
-    if (tVal > tMaxInt) {
-      tMaxInt = tVal;
-    }
+  for (int tIter = 0; tIter < mNSamples; tIter++) {
+    double tVal = mFOModel->GetIntegrand(aPartType, coor);
+    if (tVal > aMaxInt)
+      aMaxInt = tVal;
     tMulti += tVal;
   }
   tMulti *= mFOModel->GetHyperCubeVolume() / (1.0 * mNSamples);
-  aPartType->SetMaxIntegrand(tMaxInt);
-  aPartType->SetMultiplicity(tMulti);
-
   return tMulti;
 }

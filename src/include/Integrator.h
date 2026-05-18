@@ -46,12 +46,11 @@ public:
 
   Model* GetModel();
   void GenerateParticles(ParticleType* aPartType, int aPartCount, std::list<Particle>* aParticles);
+  double Integrate(ParticleType* aPartType, double& aMaxInt);
   bool SetMultiplicities(ParticleDB* aDB, const TString& filename = "fmultiplicity");
   std::string GetFileDescription() { return mFileDescription; }
 
 private:
-  double Integrate(ParticleType* aPartType);
-
   Model* mFOModel;
   int mNSamples;
   std::string mFileDescription;

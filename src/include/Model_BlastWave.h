@@ -44,6 +44,12 @@ public:
   double GetHyperCubeVolume() override;
   void AddParameterBranch(TTree* aTree) override;
 
+  const Thermodynamics* GetThermodynamics() const { return mThermo; }
+  double GetVt()       const { return mVt; }
+  double GetTau()      const { return mTau; }
+  double GetRhoMax()   const { return mRhoMax; }
+  double GetRapSRange() const { return mRapSRange; }
+
 protected:
   double mRapPSRange;
   double mRapSRange;

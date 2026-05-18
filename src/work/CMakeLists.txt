@@ -3,8 +3,10 @@ target_link_libraries(therm2_events.exe therminator ${ROOT_LIBRARIES})
 
 add_executable(ex_omega_decay.exe ex_omega_decay.cxx)
 add_executable(ex_o4_pion_spectra.exe ex_o4_pion_spectra.cxx)
+add_executable(ex_blastwave_yield.exe ex_blastwave_yield.cxx)
 
 target_link_libraries(ex_omega_decay.exe therminator ${ROOT_LIBRARIES})
 target_link_libraries(ex_o4_pion_spectra.exe therminator ${ROOT_LIBRARIES})
+target_link_libraries(ex_blastwave_yield.exe therminator ${ROOT_LIBRARIES})
 
 configure_file(ex_plot_o4_pion_spectra.C ${CMAKE_CURRENT_BINARY_DIR}/ex_plot_o4_pion_spectra.C COPYONLY)

@@ -126,7 +126,12 @@ ParticleType* ParticleDB::GetParticleType(int aIndex) {
 }
 
 ParticleType* ParticleDB::GetParticleType(TString aName) {
-  return &(mParticleTable[mParticleNames[aName]]);
+  auto it = mParticleNames.find(aName);
+  if (it == mParticleNames.end()) {
+    PRINT_MESSAGE("<ParticleDB::GetParticleType>\tParticle '" << aName << "' not found.");
+    return nullptr;
+  }
+  return &(mParticleTable[it->second]);
 }
 
 int ParticleDB::GetParticleTypeIndex(TString aName) {

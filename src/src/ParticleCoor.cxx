@@ -49,6 +49,7 @@ ParticleCoor& ParticleCoor::operator=(ParticleCoor& aPartCoor) {
   rootpid = aPartCoor.rootpid;
   eid = aPartCoor.eid;
   fathereid = aPartCoor.fathereid;
+  rooteid = aPartCoor.rooteid;
   decayed = aPartCoor.decayed;
   eventid = aPartCoor.eventid;
   return *this;
@@ -70,6 +71,7 @@ ParticleCoor& ParticleCoor::operator=(ParticleCoor* aPartCoor) {
   rootpid = aPartCoor->rootpid;
   eid = aPartCoor->eid;
   fathereid = aPartCoor->fathereid;
+  rooteid = aPartCoor->rooteid;
   decayed = aPartCoor->decayed;
   eventid = aPartCoor->eventid;
   return *this;

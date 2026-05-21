@@ -36,13 +36,13 @@
 #define _PARTICLES_TREE_ "particles"
 #define _PARTICLE_BRANCH_ "particle"
 #define _PARTICLE_FORMAT_                                                                          \
-  "mass/D:t:x:y:z:e:px:py:pz:w:decayed/I:pid:fatherpid:rootpid:eid:fathereid:eventid/i"
+  "mass/D:t:x:y:z:e:px:py:pz:w:decayed/I:pid:fatherpid:rootpid:eid:fathereid:rooteid:eventid/i"
 
 class ParticleCoor {
 public:
   ParticleCoor()
       : mass(0.0), t(0.0), x(0.0), y(0.0), z(0.0), e(0.0), px(0.0), py(0.0), pz(0.0), w(1.0),
-        decayed(0), pid(0), fatherpid(0), rootpid(0), eid(0), fathereid(0), eventid(0) {}
+        decayed(0), pid(0), fatherpid(0), rootpid(0), eid(0), fathereid(0), rooteid(0), eventid(0) {}
   ~ParticleCoor() {}
 
   ParticleCoor& operator=(ParticleCoor& aPartCoor);
@@ -81,6 +81,7 @@ public:
   Int_t rootpid;
   Int_t eid;
   Int_t fathereid;
+  Int_t rooteid;
   UInt_t eventid;
 };
 

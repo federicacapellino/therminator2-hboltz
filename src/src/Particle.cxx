@@ -49,6 +49,7 @@ Particle::Particle(ParticleType* aType) : ParticleCoor(), mPartType(aType) {
   rootpid = pid;
   eid = EIDi++;
   fathereid = -1;
+  rooteid = eid;
 }
 
 Particle::~Particle() {}
@@ -69,6 +70,7 @@ ParticleCoor& Particle::operator=(Particle& aParticle) {
   rootpid = aParticle.rootpid;
   eid = aParticle.eid;
   fathereid = aParticle.fathereid;
+  rooteid = aParticle.rooteid;
   decayed = aParticle.decayed;
   eventid = aParticle.eventid;
   return *this;
@@ -92,6 +94,7 @@ void Particle::SetParticlePX(double aPe, double aPx, double aPy, double aPz, dou
   fatherpid = aFather->pid;
   rootpid   = aFather->rootpid;
   fathereid = aFather->eid;
+  rooteid   = aFather->rooteid;
   w         = aFather->w;
 }
 
@@ -101,7 +104,7 @@ const char* Particle::MakeTEXTEntry() {
   oss.flags(std::ios::right);
   oss.precision(6);
   oss.width(6);
-  oss << eid << '\t' << fathereid << '\t';
+  oss << eid << '\t' << fathereid << '\t' << rooteid << '\t';
   oss << pid << '\t' << fatherpid << '\t' << rootpid << '\t';
   oss << decayed << '\t';
   oss.flags(std::ios::left | std::ios::scientific);

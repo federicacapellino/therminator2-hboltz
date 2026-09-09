@@ -150,7 +150,14 @@ void EventGenerator::SaveAsRoot() {
     mEventTree->Branch(_EVENTS_BRANCH_, &tStructEvent, _EVENTS_FORMAT_);
 
     // Model independent parameters
-    mParameterTree->Branch(_INTEGRATESAMPLE_BRANCH_, (UInt_t*)&mIntegrateSample, "i");
+    // NOTE: the leaflist must include the leaf name ("name/i"), not just the bare type code
+    // ("i") -- a bare type code is taken as a literal leaf named "i" of type Float_t, silently
+    // ignoring the intended UInt_t type (verified empirically; this file's Branch() call had this
+    // latent bug for _INTEGRATESAMPLE_BRANCH_ too, undetected until something actually read it back).
+    mParameterTree->Branch(_INTEGRATESAMPLE_BRANCH_, (UInt_t*)&mIntegrateSample,
+                           _INTEGRATESAMPLE_BRANCH_ "/i");
+    mParameterTree->Branch(_STOREDEVENTS_BRANCH_, (UInt_t*)&mNumberOfEvents,
+                           _STOREDEVENTS_BRANCH_ "/i");
     mParameterTree->Branch(_TIMESTAMP_BRANCH_, (Char_t*)tTimeStamp, _TIMESTAMP_FORMAT_);
     mParameterTree->Branch(_MODELNAME_BRANCH_,
                            (Char_t*)mEvent->GetIntegrator()->GetModel()->GetName(),

@@ -9,3 +9,9 @@ CMakeFiles/
 old/*
 CMakeCache.txt
 doc/*
+*.png
+*.pdf
+*.root
+*.txt
+*.log
+*.ini

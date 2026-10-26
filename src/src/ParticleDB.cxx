@@ -146,6 +146,14 @@ int ParticleDB::ExistsParticleType(TString aName) {
   return mParticleNames.count(aName);
 }
 
+void ParticleDB::AddDroppedChannel(const TString& aChannel) {
+  mDroppedChannels.push_back(aChannel);
+}
+
+const std::vector<TString>& ParticleDB::GetDroppedChannels() const {
+  return mDroppedChannels;
+}
+
 /* @brief Reads in the particle database:
 
 @param [in/out] aPartDB a previously allocated particle database. After

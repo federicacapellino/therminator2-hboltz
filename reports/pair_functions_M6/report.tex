@@ -1,0 +1,175 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\usepackage{caption}
+\usepackage{float}
+\captionsetup{font=small,labelfont=bf}
+
+\newcommand{\pass}{\textcolor{green!45!black}{\textbf{PASS}}}
+\newcommand{\fail}{\textcolor{red!70!black}{\textbf{FAIL}}}
+\newcommand{\code}[1]{\texttt{\hyphenchar\font=`\-#1}}
+\sloppy
+\emergencystretch=2em
+
+\title{Pair functions in a hadron resonance gas at rest:\\ results of milestone M6
+(single-particle currents)}
+\author{THERMINATOR 2 (hboltz fork), \code{src/work/hrg\_pair\_density\_spec.md}, Sec.~9}
+\date{26 October 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+This note reports milestone M6 of Part~II of the spec: the single-particle currents
+$S_c^\mu=\mathcal A_c\,p^\mu+\mathcal B_c\,\epsilon u^\mu$ of all 381 species of the THERMINATOR
+\code{ParticleDB}. They are built by a FastReso-type recursion over the parsed decay channels, in
+decreasing mass. All tests pass for both weak-decay settings: T6.1 (one step from thermal parents
+equals the closed-form two-body $F_1$, $F_1+F_u$ to $1.5\times10^{-11}$), T6.2 (densities equal the
+counting to $1.5\times10^{-8}$, cut-independent to $3\times10^{-10}$), T6.3 (positivity, timelike,
+finite at $k\to0$) and T6.4 (event MC, $2\times10^4$ events: species densities and momentum spectra).
+M7 has not been started.
+\end{abstract}
+
+\section{Implementation}
+Code: new section ``Single-particle currents'' in \code{src/work/PairFunctions.h}, new program
+\code{src/work/ex\_pair\_functions\_currents.exe}, and a \code{--spectra} flag in
+\code{ex\_pair\_functions\_mc.exe}.
+
+\paragraph{Representation.} For every species, the thermal part
+$\mathcal A^{\rm th}_c=s_c\,g_cf_c(\epsilon)/(2\pi)^3$, $\mathcal B^{\rm th}_c=0$, is kept analytic.
+Here $s_c=1$ (\code{--norm quad}) or $s_c=$ \code{GetMultiplicity()}$/(Vn_c^{\rm quad})$
+(\code{--norm mc}, the multiplicities the event MC samples), and $s_c=0$ for photons. The feed-down
+part ($\mathcal A_c$ and $\mathcal A_c+\mathcal B_c$) is stored on a momentum grid. The grid has the
+panels of the M1 table (\code{ThermalPanels}: $0.5T$ up to $10T$, $T$ up to $40T$, $5T$ up to the
+cut, default $100T$), with 16 Gauss--Legendre nodes per panel (992 nodes). Between nodes the feed-down
+part is evaluated by Lagrange interpolation on the panel's nodes. It is zero beyond the cut.
+
+\paragraph{Recursion.} There are 3597 feed slots with weak decays on (3282 two-body, 315
+three-body), 3549 with weak decays off. They give every daughter slot of every channel of every
+decaying parent, with the BR as stored after parsing. Species are processed in decreasing mass, so
+the parents of a species are complete when it is reached. Weak-stable species (\code{--weak off}) and
+species with BR sum below 1 are handled as in the table. A three-body slot is the two-body rule
+averaged over the effective partner mass $\tilde m\in[m_c+m_d,m_a-m_b]$, with weight
+$p^*(m_a;m_b,\tilde m)\,p^*(\tilde m;m_c,m_d)$ (32 nodes, normalized).
+
+\paragraph{Deviation from the spec: integration variable.} The two-body rule is integrated in the
+parent energy $E$ instead of $w$. This is the same integral, since $E(w)$ is linear in $w$:
+\begin{align*}
+\mathcal A_b&\mathrel{+}=\frac{Bm_a}{2p^*k^3}\int_{E^-}^{E^+}\!dE\,(\epsilon E-m_aE_b^*)\,\mathcal A_a(E),&
+(\mathcal A_b+\mathcal B_b)&\mathrel{+}=\frac{Bm_a}{2p^*k\epsilon}\int_{E^-}^{E^+}\!dE\,E\,(\mathcal A_a+\mathcal B_a)(E),
+\end{align*}
+with $E^-=m_a(E^{*2}+k^2)/(\epsilon E^*+kp^*)$ (no $1/m_b^2$) and the upper limit clipped at the
+parent's grid cut. The panels start at $E^-$ and follow the thermal scale
+($E^-+T\{0,\tfrac12,1,2,4,\dots,64,100\}$). A fixed rule in $w$ fails at large $k$: for pions from
+heavy parents the window $E^+-E^-$ is $\gg T$. For narrow windows ($\epsilon h<m_aE^*$, with
+$h=m_akp^*/m_b^2$ the half-width) the factor is written as $\epsilon y+m_aE^*k^2/m_b^2$, with
+$y=E-E_c$ on the exactly symmetric window $[E^-,E^-+2h]$. Without this, the $1/k^3$ cancellation
+cost three digits at the smallest node: the first run gave $2.7\times10^{-9}$ in T6.1, and the
+feed part changed by a factor 2 between $k=10^{-6}$ and $10^{-8}$.
+
+\paragraph{Photons} (\code{gam000zer}, $m=0.001$~GeV in \code{particles.data}) are not primordial
+but are produced (e.g.\ $\Sigma^0\to\Lambda\gamma$). Their current is built like any other and is
+included in T6.2 and T6.4. It is reported separately in T6.3.
+
+\paragraph{Run time.} 40~s per build of all currents on 8 threads. A full run with the cut check
+takes about 75~s.
+
+\section{Results}
+Commands (in \code{build/t2/}, which holds the \code{fmultiplicity\_E33B55BA.txt} cache;
+\code{THERMINATOR\_SHARE} set):
+\begin{verbatim}
+ex_pair_functions_currents.exe --weak on|off \
+    --output m6/currents_weak{on,off}_quad.root
+ex_pair_functions_currents.exe --weak on --stat boltzmann --cutcheck 0 ...
+ex_pair_functions_mc.exe --spectra --weak on|off --events 5000 --seed 601..604   (hadd)
+ex_pair_functions_currents.exe --weak on|off --norm mc --cutcheck 0 \
+    --mc m6/spectra_weak{on,off}.root --output m6/currents_weak{on,off}_mc.root
+\end{verbatim}
+
+\begin{table}[H]
+\centering\footnotesize
+\begin{tabular}{llll}
+\toprule
+test & quantity & worst deviation (weak on / off) & \\
+\midrule
+T6.1 & $\mathcal A_c$ vs closed-form $F_1$, $2.3\times10^6$ (slot, node) pairs & $6.2\times10^{-13}$ / $6.2\times10^{-13}$ & \pass\\
+T6.1 & $\mathcal A_c+\mathcal B_c$ vs $F_1+F_u$ & $1.5\times10^{-11}$ / $1.5\times10^{-11}$ & \pass\\
+T6.2 & $n_c^{\rm grid}$ vs counting, 381 species & $1.5\times10^{-8}$ ($\gamma$) / same & \pass\\
+T6.2 & cut $40T$ vs $100T$, $\max|\Delta n/n|$ & $2.8\times10^{-10}$ ($J/\psi$) / same & \pass\\
+T6.3 & 376\,960 hadron nodes: non-finite, $\mathcal A+\mathcal B\le0$, spacelike & 0, 0, 0 / 0, 0, 0 & \pass\\
+T6.3 & $k=10^{-6},10^{-8}$: finite, $\mathcal A+\mathcal B>0$; rel.\ change & 67/67; $1.3\times10^{-8}$ & \pass\\
+T6.4 & species densities, pulls (381 species) & rms 1.01, max 2.8 / rms 0.97, max 3.7 & \pass\\
+T6.4 & $dN/dp$, 8 species, $\chi^2$ & min $p=0.035$ ($\Lambda$) / $0.045$ ($\rho^0$) & \pass\\
+\bottomrule
+\end{tabular}
+\caption{M6 tests. The \code{--stat boltzmann} run gives the same verdicts and deviations of the
+same size.}
+\end{table}
+
+\paragraph{T6.1.} The closed form is LCS Eq.~(twobodyF), with $f_a$ expanded as
+$\sum_nc_ne^{-nE/T}$ (BE: $c_n=1$, FD: $c_n=(-1)^{n-1}$) and each term integrated analytically
+(with a series for $\sinh x-x\cosh x$ when $x=nh/T<0.5$). Nodes where the parent grid cut enters
+($E^->E_{\max}-50T$, i.e.\ a truncation above $e^{-50}$; 28\% of the nodes, all in the far tail)
+are excluded from the comparison. The worst cases are at the smallest node ($k=4.1\times10^{-4}$
+GeV).
+
+\paragraph{T6.2.} Spec Sec.~9.5 counting in the same order:
+$n_b=n_b^{\rm th}+\sum_an_a\sum_{\rm ch}B\,n_b^{\rm ch}$. Selected densities (weak on, $n_c/n_c^{\rm th}$):
+$\pi^+$ 3.11, $K^+$ 1.83, $p$ 4.17, $\Lambda$ 5.29, $\rho^0$ 1.38, $\omega$ 1.36, $K^{*0}$ 1.22,
+$\Delta^{++}$ 1.29.
+
+\paragraph{T6.3.} $\mathcal A_c$ turns out to be positive on every node, although the spec does not
+require it. The smallest timelike margin $(\epsilon(\mathcal A+\mathcal B)-k|\mathcal A|)/
+(\epsilon(\mathcal A+\mathcal B))$ is $3.8\times10^{-5}$ ($\pi^0$ at large $k$, where
+$\epsilon\to k$). Only 67 species receive feed-down, and only these enter the $k\to0$ check.
+Fig.~\ref{fig:cur} shows that $\mathcal B_c/(\mathcal A_c+\mathcal B_c)$ reaches 0.77 for slow
+$\pi^+$: the $u^\mu$ part of the current matters for M7.
+
+\paragraph{T6.4.} The event MC fills, for all particles in the list (decayed or not), the per-event
+count and count$^2$ of each species, and $dN/dp$ (10~MeV bins, 0--3~GeV) for $\pi^+$, $K^+$, $p$,
+$\rho^0$, $K^{*0}$, $\omega$, $\Lambda$, $\Delta^{++}$. Weak on: per event, $\pi^+$ $3834.33\pm0.46$
+(MC) vs 3834.08 (currents), $\Lambda$ $161.65\pm0.09$ vs 161.70, $p$ $322.38\pm0.13$ vs 322.41.
+Weak off: $\pi^+$ $3262.82\pm0.41$ vs 3262.97, $\Lambda$ $115.68\pm0.08$ vs 115.64. Spectra:
+Fig.~\ref{fig:spec}; the $\chi^2$ test uses bins with at least 5 expected counts. The weak-on and
+weak-off samples use the same seeds (601--604), so they are not statistically independent.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{fig/spectra_weakon.png}
+\caption{T6.4, weak on: $dN/dp$ of all particles of each species (decayed or not), $2\times10^4$
+events, MC (points) vs $N_{\rm ev}V\int 4\pi p^2(\mathcal A_c+\mathcal B_c)\,dp$ (red).
+Weak off: \code{fig/spectra\_weakoff.png}.}
+\label{fig:spec}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\textwidth]{fig/pulls.png}
+\caption{T6.4: pulls of the species densities, 381 species, both weak settings.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{fig/currents.png}
+\caption{Currents (weak on, \code{--norm quad}): $\mathcal A_c+\mathcal B_c$ and
+$\mathcal B_c/(\mathcal A_c+\mathcal B_c)$, which is zero for a purely thermal species.}
+\label{fig:cur}
+\end{figure}
+
+\section{Outputs and status}
+\code{build/t2/m6/}: \code{currents\_weak\{on,off\}\_\{quad,mc\}.root},
+\code{currents\_weakon\_boltz.root} (TTree \code{currents}: name, pdg, mass, $n^{\rm th}$,
+$n^{\rm count}$, $n^{\rm grid}$, $k$, $w$, $\mathcal A$, $\mathcal A+\mathcal B$ (total); with
+\code{--mc}, also \code{hSpecMC\_<pdg>}, \code{hSpecPred\_<pdg>}, \code{hPullSpecies}), the merged MC
+\code{spectra\_weak\{on,off\}.root} and the logs (copied here). M6: all tests \pass. Next: M7
+(L1 table) uses \code{BuildCurrents} in place of the thermal $f_a$.
+
+\end{document}

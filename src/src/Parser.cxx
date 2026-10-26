@@ -145,24 +145,32 @@ void Parser::ReadSHAREDecays(ParticleDB* aDB) {
     if (!aDB->ExistsParticleType(tFather)) {
       PRINT_MESSAGE("<Parser::ReadSHAREDecay>\tDid not find the father particle: " << tFather);
       PRINT_MESSAGE("\tNot adding channel");
+      aDB->AddDroppedChannel(TString::Format("%s -> %s %s %s (unknown father %s)", tFather,
+                                             tDaughter1, tDaughter2, tDaughter3, tFather));
       continue;
     }
     if (!aDB->ExistsParticleType(tDaughter1)) {
       PRINT_MESSAGE(
           "<Parser::ReadSHAREDecay>\tDid not find the daughter 1 particle: " << tDaughter1);
       PRINT_MESSAGE("\tNot adding channel");
+      aDB->AddDroppedChannel(TString::Format("%s -> %s %s %s (unknown daughter 1 %s)", tFather,
+                                             tDaughter1, tDaughter2, tDaughter3, tDaughter1));
       continue;
     }
     if (!aDB->ExistsParticleType(tDaughter2)) {
       PRINT_MESSAGE(
           "<Parser::ReadSHAREDecay>\tDid not find the daughter 2 particle: " << tDaughter2);
       PRINT_MESSAGE("\tNot adding channel");
+      aDB->AddDroppedChannel(TString::Format("%s -> %s %s %s (unknown daughter 2 %s)", tFather,
+                                             tDaughter1, tDaughter2, tDaughter3, tDaughter2));
       continue;
     }
     if ((*tDaughter3 > 65) && (*tDaughter3 < 122) && (!aDB->ExistsParticleType(tDaughter3))) {
       PRINT_MESSAGE(
           "<Parser::ReadSHAREDecay>\tDid not find the daughter 3 particle: " << tDaughter3);
       PRINT_MESSAGE("\tNot adding channel");
+      aDB->AddDroppedChannel(TString::Format("%s -> %s %s %s (unknown daughter 3 %s)", tFather,
+                                             tDaughter1, tDaughter2, tDaughter3, tDaughter3));
       continue;
     }
     PRINT_DEBUG_2("\tDecay channel for " << tFather);
@@ -182,7 +190,14 @@ void Parser::ReadSHAREDecays(ParticleDB* aDB) {
             aDB->GetParticleType(tFather)->GetDecayChannelCount3() + 1);
         PRINT_DEBUG_2("\t\tAdding 3-body decay channel:     " << tDaughter1 << " + " << tDaughter2
                                                               << " + " << tDaughter3);
-      } else
+      } else {
+        aDB->AddDroppedChannel(TString::Format(
+            "%s -> %s %s %s (closed, BR %g, extra mass %g GeV)", tFather, tDaughter1, tDaughter2,
+            tDaughter3, tBRatio,
+            aDB->GetParticleType(tDaughter1)->GetMass() +
+                aDB->GetParticleType(tDaughter2)->GetMass() +
+                aDB->GetParticleType(tDaughter3)->GetMass() -
+                aDB->GetParticleType(tFather)->GetMass()));
         PRINT_DEBUG_2("\t\tNOT adding 3-body decay channel: "
                       << tDaughter1 << " + " << tDaughter2 << " + " << tDaughter3
                       << ", extra mass = "
@@ -190,6 +205,7 @@ void Parser::ReadSHAREDecays(ParticleDB* aDB) {
                              aDB->GetParticleType(tDaughter2)->GetMass() +
                              aDB->GetParticleType(tDaughter3)->GetMass() -
                              aDB->GetParticleType(tFather)->GetMass());
+      }
     } else {
       // 2-body decay
       tBRatio = atof(tDaughter3);
@@ -239,12 +255,19 @@ void Parser::ReadSHAREDecays(ParticleDB* aDB) {
         aDB->GetParticleType(tFather)->SetDecayChannelCount2(
             aDB->GetParticleType(tFather)->GetDecayChannelCount2() + 1);
         PRINT_DEBUG_2("\t\tAdding 2-body decay channel:     " << tDaughter1 << " + " << tDaughter2);
-      } else
+      } else {
+        aDB->AddDroppedChannel(TString::Format(
+            "%s -> %s %s (closed, BR %g, extra mass %g GeV)", tFather, tDaughter1, tDaughter2,
+            tRatio,
+            aDB->GetParticleType(tDaughter1)->GetMass() +
+                aDB->GetParticleType(tDaughter2)->GetMass() -
+                aDB->GetParticleType(tFather)->GetMass()));
         PRINT_DEBUG_2("\t\tNOT adding 2-body decay channel: "
                       << tDaughter1 << " + " << tDaughter2 << ", extra mass = "
                       << aDB->GetParticleType(tDaughter1)->GetMass() +
                              aDB->GetParticleType(tDaughter2)->GetMass() -
                              aDB->GetParticleType(tFather)->GetMass());
+      }
     }
   }
 }

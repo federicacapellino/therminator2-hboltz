@@ -1,0 +1,413 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+
+\newcommand{\CK}{\mathcal C_K}
+\newcommand{\Cu}{\mathcal C_u}
+\newcommand{\CQ}{\mathcal C_Q}
+\newcommand{\pass}{\textcolor{green!45!black}{\textbf{PASS}}}
+\newcommand{\fail}{\textcolor{red!70!black}{\textbf{FAIL}}}
+\newcommand{\code}[1]{\texttt{\hyphenchar\font=`\-#1}}
+\sloppy
+\emergencystretch=2em
+
+\title{Pair functions in a hadron resonance gas at rest:\\ results of milestones M0, M1 and M2}
+\author{THERMINATOR 2 (hboltz fork), \code{src/work/README\_pair\_functions.md}}
+\date{23 October 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+This note reports the first three milestones of the pair-function programme of
+\code{README\_pair\_functions.md}. M0 adds read-only getters to the HRG model and a switch that
+makes the weakly decaying hadrons stable. M1 builds a table of the pair functions $\CK$ and $\Cu$
+for the twelve ordered same-species pairs of $\pi^\pm$, $K^\pm$, $p$, $\bar p$ from the
+THERMINATOR decay channels, and checks it analytically. M2 compares the table with the connected
+pair density of $2\times10^5$ THERMINATOR HRG events at ancestry level L0 (father primordial).
+All tests pass. The literal requirement $\CK\ge0$ of T1.6 does not hold for the formula of the
+specification; only $\Cu\ge0$ and $\CK+\Cu\ge0$ are guaranteed, and the requirement has been
+waived. Two points of statistical treatment that matter at this level of precision are described
+in Sec.~\ref{sec:m2notes}.
+\end{abstract}
+
+\section{Setup}
+
+\paragraph{Model.} THERMINATOR HRG model, unchanged: $T=0.155$~GeV, $\mu=0$, cubic box of side
+30~fm ($V=27000~\text{fm}^3=3.514\times10^{6}~\text{GeV}^{-3}$). Primordial multiplicities are
+Poisson with means from the Monte Carlo \code{Integrator} ($10^6$ samples per species, cached in
+\code{fmultiplicity\_E33B55BA.txt}); decays use pole masses, isotropic two-body decays and
+uniform Dalitz-plot three-body decays. Branching ratios are taken from \code{ParticleDB} after
+parsing (Clebsch--Gordan factors applied, closed channels dropped, no renormalization).
+
+\paragraph{Programs} (all in \code{src/work/}, built by \code{src/work/CMakeLists.txt}):
+\begin{itemize}\itemsep0pt
+\item \code{PairFunctions.h} -- shared code: weak switch, quadrature, phase space, parent
+  statistics, $\CK$, $\Cu$, channel loop, binning, bin-integrated predictions;
+\item \code{ex\_pair\_functions\_table.exe} -- the table and tests T1.1--T1.6;
+\item \code{ex\_pair\_functions\_mc.exe} -- the HRG Monte Carlo with the observables of spec Sec.~4
+  (and test T0.1);
+\item \code{ex\_pair\_functions\_compare.exe} -- MC versus table, tests T2.1--T2.3;
+\item \code{prototype\_3body.py} -- the reference prototype of spec Appendix~A, verbatim.
+\end{itemize}
+Library changes: \code{Model\_HRG::GetTemperature()}, \code{Model\_HRG::GetVolume()} ($=\text{size}^3$);
+\code{ParticleDB::GetDroppedChannels()}, filled by \code{Parser::ReadSHAREDecays} (previously the
+dropped channels were only printed in debug builds). No physics change.
+
+\paragraph{Reproduction.}
+Outputs are in \code{build/t1/} (M1) and \code{build/t2/} (M2); the figures of this note are made
+by \code{reports/pair\_functions\_M0\_M2/make\_figures.C}.
+
+\section{M0: setup and the weak switch}
+
+The \code{--weak off} switch sets $\Gamma<0$ on the weakly decaying species in \code{ParticleDB}
+after loading. \code{Event::DecayParticles()} never decays a particle with $\Gamma<0$, and the
+table skips such parents, so the same flag acts on MC and table; the decay tables themselves are
+untouched. The species are $K^0$, $\Lambda$, $\Sigma^+$, $\Sigma^-$, $\Xi^0$, $\Xi^-$, $\Omega^-$
+and their antiparticles: 7 PDG codes, 14 \code{ParticleDB} entries ($\bar K^0$ is the
+antiparticle of $K^0$; the ``8 species'' of the spec counts $K^0$ and $\bar K^0$ separately). The
+program aborts if the switch does not change exactly 14 entries.
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{lrrrr}
+\toprule
+& \multicolumn{2}{c}{\code{--weak off}} & \multicolumn{2}{c}{\code{--weak on}} \\
+species (PDG) & final & decayed & final & decayed \\
+\midrule
+$K^0$ / $\bar K^0$ ($\pm311$)            & 29143 / 29182 & 0 & 14667 / 14535 & 14641 / 14559 \\
+$\Lambda$ / $\bar\Lambda$ ($\pm3122$)    & 5790 / 5776   & 0 & 0 & 7971 / 8107 \\
+$\Sigma^+$ / $\bar\Sigma^-$ ($\pm3222$)  & 1642 / 1591   & 0 & 0 & 1643 / 1556 \\
+$\Sigma^-$ / $\bar\Sigma^+$ ($\pm3112$)  & 1532 / 1521   & 0 & 0 & 1565 / 1568 \\
+$\Xi^0$ / $\bar\Xi^0$ ($\pm3322$)        & 1046 / 1101   & 0 & 0 & 1092 / 1154 \\
+$\Xi^-$ / $\bar\Xi^+$ ($\pm3312$)        & 1034 / 1072   & 0 & 0 & 1095 / 1042 \\
+$\Omega^-$ / $\bar\Omega^+$ ($\pm3334$)  & 134 / 142     & 0 & 0 & 129 / 152 \\
+\midrule
+final particles with a weak father & \multicolumn{2}{c}{0} & \multicolumn{2}{c}{107884} \\
+\bottomrule
+\end{tabular}
+\caption{T0.1, 50 events. With \code{--weak off} all 14 species are final and none of their
+decay products appears: \pass. The \code{--weak on} run is the reference (about half of the $K^0$
+survive, BR sum 0.5; more $\Lambda$ because $\Xi$ and $\Omega$ feed them). T0.1 was also passed by
+each of the 8 weak-off production jobs of M2 ($2.5\times10^4$ events each).}
+\end{table}
+
+\section{M1: the table and its analytic checks}
+
+\subsection{Construction}
+For each parent $a$ with $\Gamma\ge0$ and each channel with branching ratio $B$, every ordered
+pair of distinct daughter slots $(i,j)$ whose species form one of the 12 ordered measured pairs
+adds a term: a pole $\CK=(A/m_a)f_a(\epsilon_K)\,\delta(M-m_a)$ for two-body channels and the
+continuum of spec Eq.~(boxed, Sec.~3.1) for three-body channels, with Gauss--Legendre quadrature
+(64 points) in $t\in[-1,1]$. Parent statistics are those of \code{Model\_HRG} (Bose--Einstein or
+Fermi--Dirac, $g_a=2J+1$; \code{--stat boltzmann} for debugging). Identical terms from different
+slot pairs are merged with a multiplicity factor. With weak decays on this gives 124 terms (42
+poles, 82 continua); with weak decays off 120 (38, 82), the four missing poles being
+$K^0,\bar K^0\to\pi^+\pi^-$ in both orderings.
+
+The output ROOT file contains, per ordered pair, \code{CK\_cont\_<pair>}, \code{Cu\_cont\_<pair>}
+(\code{TH2D} in $(M,\kappa)$; $M$ from threshold to 2~GeV in 1~MeV steps for 30~MeV, then 4~MeV;
+$\kappa$ from 0 to 3~GeV in steps of 5, 10 and 25~MeV), \code{rho\_cont\_<pair>}, per-channel
+histograms in \code{channels/<pair>/}, a \code{TTree} of poles ($m_a$, $A/m_a$, BR,
+multiplicity, $n_a$, $f_a$ on the $\kappa$ grid) and metadata ($T$, $V$, weak flag, statistics,
+\code{ParticleDB} CRC32, dropped channels, BR sums). Run time about 30~s.
+
+Phase-space integrals use the substitution $x=x_{\min}+\tfrac12(x_{\max}-x_{\min})(1-\cos\theta)$,
+which removes the square-root behaviour at both kinematic endpoints and gives exponential
+convergence; $\kappa$ and momentum integrals use composite Gauss--Legendre rules up to $100\,T$.
+
+\subsection{Tests}
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{lp{7.8cm}p{3.4cm}l}
+\toprule
+& test & worst deviation & \\
+\midrule
+T1.1 & $\Phi_3$ from the $M$ integral vs the Dalitz area; 105 three-body channels $\times$ 6
+       daughter orderings (tolerance $10^{-8}$) & $8.0\times10^{-15}$ & \pass \\
+T1.2 & $\rho^{a\to ss'X}(M)$ from $16\pi^2p^*\!\int\kappa^2(\CK+\Cu)$ vs the Dalitz projection
+       (IM Eq.~9); 105 channels, all ordered slot pairs, 7560 masses ($10^{-6}$) &
+       $6.2\times10^{-14}$ & \pass \\
+T1.3 & each pole integrates to $B\,n_a$; 1641 two-body channels ($10^{-6}$) &
+       $4.4\times10^{-16}$ & \pass \\
+T1.4 & $\int dM\,\rho_{ss'}=c^{\rm 1step}_{ss'}$ for the 12 ordered pairs ($10^{-6}$) &
+       $5.6\times10^{-14}$ & \pass \\
+T1.5 & $n_a$ (quadrature) vs \code{GetMultiplicity()}$/V$, 381 species; error of the MC
+       integration estimated from $2\times10^5$ extra samples &
+       pulls: mean $-0.09$, rms 1.02, max 2.97 & \pass \\
+T1.6 & $\Cu\ge0$, $\CK+\Cu\ge0$, finite, on all $2.33\times10^6$ grid cells & none violated & \pass \\
+     & finite at $\kappa=10^{-8}$; $\kappa=10^{-6}$ vs the analytic $\kappa\to0$ limit (410 points) &
+       $9.5\times10^{-10}$ & \pass \\
+     & $\CK\ge0$ (literal spec requirement) & 416602 cells negative & waived \\
+\bottomrule
+\end{tabular}
+\caption{M1 tests, \code{--weak on}, quantum statistics. \code{--weak off} and \code{--stat
+boltzmann} give the same verdicts and deviations of the same size (T1.5 is skipped for Boltzmann
+statistics).}
+\label{tab:m1}
+\end{table}
+
+The analytic $\kappa\to0$ limit used in T1.6 follows from expanding $\epsilon_P(t)$ to first
+order in $\kappa$:
+\begin{equation}
+\CK(\kappa\to0)=\frac{2\pi D\,p_3^*}{M^2}\Big(2E_P^*f_0+\tfrac23\,p_3^{*2}f_0'\Big),\qquad
+\Cu(\kappa\to0)=-\frac{4\pi}{3}\,\frac{D\,p_3^{*3}f_0'}{M^2},
+\label{eq:limit}
+\end{equation}
+with $f_0$, $f_0'$ evaluated at $\epsilon=E_P^*$.
+
+\paragraph{The sign of $\CK$.} Since $f_a$ decreases with energy, $f_0'<0$: $\Cu\ge0$ always, but
+$\CK$ changes sign when $\tfrac23p_3^{*2}|f_0'|>2E_P^*f_0$, i.e.\ near the lower end of the
+three-body continuum where the recoil momentum $p_3^*$ is large (Fig.~\ref{fig:ckcu}).
+Physically, $\CK$ and $\Cu$ are the components along $K^\mu$ and $u^\mu$ of the averaged parent
+current; only the density seen in the rest frame, $\propto\CK+\Cu$, has to be positive. The
+Appendix-A prototype gives the same negative values (e.g.\ $\omega\to\pi^+\pi^-\pi^0$ at
+$M=0.28$~GeV, $\kappa=10^{-3}$~GeV: $\CK=-6.1\times10^{-5}$, $\Cu=1.86\times10^{-4}$), so this is a
+property of the formula, not of the implementation. The requirement $\CK\ge0$ was waived.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.62\textwidth]{fig/ckcu_omega.png}
+\caption{$\CK$, $\Cu$ and $\CK+\Cu$ versus $\kappa$ for $\omega\to\pi^+\pi^-\pi^0$, ordered pair
+$(\pi^+\pi^-)$, at $M=0.30$~GeV (quantum statistics). $\CK<0$ for $\kappa\lesssim0.17$~GeV;
+$\CK+\Cu$ is positive and smooth as $\kappa\to0$.}
+\label{fig:ckcu}
+\end{figure}
+
+\paragraph{Comparison with the Python prototype} ($\omega\to\pi^+\pi^-\pi^0$ with the prototype's
+masses, Boltzmann parent, $B=g_a=1$). $\CK$ and $\Cu$ at $M=0.4$~GeV agree to
+$\lesssim1.3\times10^{-14}$ relative at $\kappa=10^{-2}$ and 0.5~GeV, and to $1.5\times10^{-13}$
+at $\kappa=10^{-4}$~GeV, where the $1/\kappa$ cancellation in the formula limits both codes. $\Phi_3$ agrees to
+$10^{-13}$ and $\rho(M)$ to $2\times10^{-10}$; these limits are the accuracy of the prototype's
+\code{scipy.quad} integrations, whereas the C++ mass-integral and Dalitz values of $\Phi_3$ agree
+with each other to $7\times10^{-16}$.
+
+\subsection{Pair densities, dropped channels and BR sums}
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{lccc}
+\toprule
+ordered pair & $c^{\rm 1step}$, weak on & $c^{\rm 1step}$, weak off & 2-GeV grid / total \\
+\midrule
+$\pi^+\pi^-$, $\pi^-\pi^+$ & $2.7229\times10^{-4}$ & $2.0924\times10^{-4}$ & 1.0001 \\
+$\pi^+\pi^+$, $\pi^-\pi^-$ & $1.7367\times10^{-7}$ & $1.7367\times10^{-7}$ & 0.9999 \\
+$K^+K^-$, $K^-K^+$         & $1.2483\times10^{-5}$ & $1.2483\times10^{-5}$ & 0.9965 \\
+$K^\pm K^\pm$, $p p$, $p\bar p$, $\bar p p$, $\bar p\bar p$ & 0 & 0 & -- \\
+\bottomrule
+\end{tabular}
+\caption{One-step pair densities (GeV$^3$; $10^{-4}$~GeV$^3\simeq0.0130$~fm$^{-3}$). The last
+column is the integral over the 2-GeV table grid at bin centres divided by the exact value
+(information only: binning near threshold and the cut at 2~GeV). No one-step channel of the
+THERMINATOR list gives like-sign kaons or any proton pair. \code{--weak off} removes
+$K^0\to\pi^+\pi^-$, which carries 23\% of the $\pi^+\pi^-$ one-step density.}
+\end{table}
+
+\noindent\textbf{Dropped channels:} 122, all closed at the pole mass (none for an unknown
+particle). Most are $N^*,\Delta^*\to N\rho$ (76); the others are $N^*\to\pi N^*$, $N^*\to Nf$,
+$\Lambda^*\to K^*N$, $\Xi^*\to K\Sigma^*$, $K^*\to\omega K, fK$, $f_0\to\rho\rho$, $f_1$ and
+$f_2(2010)\to\phi\phi$ (extra mass 28~MeV). 56 of them contain a $\pi^\pm$, $K^\pm$ or $p/\bar p$. The full list is stored in the table file (\code{dropped\_channels}).
+
+\noindent\textbf{BR sums $\ne1$} (parents with $\Gamma\ge0$, $|\sum B-1|>10^{-4}$): 83 below 1 and 4
+above. Examples below 1: $K^0$ 0.500, $f_1(1285)$ 0.670, $\Delta(1700)$ 0.600, $\Delta(1620)$
+0.750, $\Lambda(1810)$ 0.600, $\eta(1295)$ 0.750, $\Xi(1690)$ 0.778/0.889, $N(1680)$ 0.780,
+$\eta$ 0.9922, $\omega$ 0.995. Above 1: the four $K^*(1430)$ charge states, 1.004. The full list is
+stored in the table file (\code{br\_sum\_not\_1}).
+
+\section{M2: Monte Carlo at level L0 versus the table}
+
+\subsection{Monte Carlo}
+For every event, all final particles ($\texttt{decayed}=0$) of the six measured species are
+grouped by \code{rooteid}, and every ordered pair of distinct particles in a group with species in
+the measured list is classified as L0 (same father, father primordial), L1$-$L0 (same father, not
+primordial) or L2$-$L1 (same root ancestor only); the father is found from a per-event map
+$\texttt{eid}\to$ particle. Per level and ordered pair the program fills the pair mass $M$ (table
+$M$ binning), a \code{TH3D} in $(M,\kappa,\cos\theta^*)$ ($\kappa$: 50~MeV bins to 1~GeV, 100~MeV
+to 2~GeV, one bin to 3~GeV; 10 bins in $\cos\theta^*$) and \code{TProfile2D}s of
+$P_1(\cos\theta^*)$ and $P_2(\cos\theta^*)$; $\theta^*$ is the angle between particle~1 in the pair
+rest frame and $\mathbf K$. Histograms hold raw counts and the number of events, so that the files
+of different seeds can be merged with \code{hadd}; the normalization $1/(N_{\rm ev}V)$ is applied in
+the comparison. Statistics: $2\times10^5$ events per weak setting (8 seeds $\times$ $2.5\times10^4$,
+about 18~ms per event), i.e.\ $1.9\times10^8$ L0 $\pi^+\pi^-$ pairs with weak decays on.
+
+The comparison integrates the predictions exactly over each MC bin: poles fall entirely into the
+bin that contains $m_a$ (all poles are at least 0.14~MeV from a bin edge), continua are integrated
+over $M$ with the Dalitz projection (exact by T1.2) and over $(M,\kappa)$ cells with $\CK+\Cu$.
+
+\subsection{Two points of statistical treatment}\label{sec:m2notes}
+\paragraph{Normalization.} The MC samples each parent with the \code{Integrator} multiplicity,
+which differs from the quadrature density $n_a$ by about 0.1\% (T1.5). In the pole bins the
+statistical error is now smaller than that (0.014\% for the $\rho^0$), so the predictions are
+normalized per parent to \code{GetMultiplicity()}$/V$; shapes, branching ratios and kinematics are
+those of the table. With the quadrature densities (\code{--norm quad}) $\pi^+\pi^-$ gives
+$\chi^2/\text{ndf}=1.58$, i.e.\ the 0.1\% integration noise of the parent multiplicities is
+resolved.
+
+\paragraph{Like-sign pairs.} For $s=s'$ both orderings $(i,j)$ and $(j,i)$ of the same two particles
+are filled into the same histogram, with the same $M$, $\kappa$ and $P_2$ (and opposite $P_1$).
+Entries therefore come in identical doublets: the variance of a bin count is $2\mu$, and the error
+of a profile is too small by $\sqrt2$. Without this correction $\pi^\pm\pi^\pm$ gave
+$\chi^2/\text{ndf}\simeq2$ and $a_2$ pull widths of 1.4--2.1; the comparison now uses variance
+$2\mu$ and divides the like-sign profile pulls by $\sqrt2$. For like-sign pairs $a_1=0$ by
+construction and is not tested. The mirror pairs $(\pi^-\pi^+)$ and $(K^-K^+)$ contain the same
+pairs as $(\pi^+\pi^-)$ and $(K^+K^-)$ in the other order; their results are identical (with $a_1$
+reversed) and are not listed separately.
+
+\subsection{T2.1: pair mass distribution}
+
+$\chi^2=\sum(n-\mu)^2/\mathrm{var}$ over all $M$ bins (plus the overflow, $M>2$~GeV) with expectation
+$\mu\ge5$; bins with smaller expectation are pooled into one. Criterion: $p>10^{-3}$.
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{lrrcc}
+\toprule
+& & & \multicolumn{2}{c}{$\chi^2/\text{ndf}$ ($p$)} \\
+ordered pair & $N_{\rm L0}$ (weak on) & prediction & weak on & weak off \\
+\midrule
+$\pi^+\pi^-$ & 191489156 & 191499075 & 444.6/422 (0.22) & 441.3/422 (0.25) \\
+$\pi^+\pi^+$ & 122394 & 122450 & 476.1/420 (0.03) & 433.9/420 (0.31) \\
+$\pi^-\pi^-$ & 121546 & 121848 & 410.0/420 (0.63) & 442.4/420 (0.22) \\
+$K^+K^-$     & 8760841 & 8762668 & 138.4/109 (0.03) & 110.4/109 (0.44) \\
+$K^\pm K^\pm$, all $p$ pairs & 0 & 0 & \multicolumn{2}{c}{table empty, MC L0 empty} \\
+\bottomrule
+\end{tabular}
+\caption{T2.1: \pass\ for all ordered pairs and both weak settings.}
+\end{table}
+
+\begin{table}[h]
+\centering\footnotesize
+\begin{tabular}{llrrr@{\hspace{1.5em}}llrrr}
+\toprule
+pair & pole & $N$ & prediction & pull & pair & pole & $N$ & prediction & pull \\
+\midrule
+$\pi^+\pi^-$ & $K^0+\bar K^0$ & 45129939 & 45128359 & $+0.24$ & $\pi^+\pi^-$ & $f_2(1270)$ & 4325961 & 4323345 & $+1.26$ \\
+             & $\rho^0$      & 54420611 & 54424255 & $-0.49$ &              & $f_0(1370)$ & 145231 & 144903 & $+0.86$ \\
+             & $\omega$      & 885036   & 885156   & $-0.13$ &              & $\rho(1450)$ & 1375348 & 1374561 & $+0.67$ \\
+             & $f_0(600)$    & 10398495 & 10397881 & $+0.19$ & $K^+K^-$     & $\phi$       & 7467313 & 7468545 & $-0.45$ \\
+             & $f_0(980)$    & 4155650  & 4154380  & $+0.62$ &              & $f_2'(1525)$ & 726684  & 728237  & $-1.82$ \\
+\bottomrule
+\end{tabular}
+\caption{Selected pole bins, weak decays on (counts include the continuum underneath). All 19 distinct
+pole bins below 2~GeV (11 in $\pi^+\pi^-$, 8 in $K^+K^-$) have $|\text{pull}|<2$.}
+\end{table}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.75\textwidth]{fig/rho_pippim.png}\\[2mm]
+\includegraphics[width=0.75\textwidth]{fig/rho_KpKm.png}
+\caption{$d\rho/dM$ per unit volume for $(\pi^+\pi^-)$ (top) and $(K^+K^-)$ (bottom), weak decays
+on: MC at level L0 (points) and the table (line); lower panels: pull $(n-\mu)/\sigma$ per bin.
+The spikes are the two-body poles, each contained in a single bin.}
+\label{fig:rho}
+\end{figure}
+
+\subsection{T2.2: normalized pair spectrum at fixed mass}
+
+For each test mass, the $\kappa$ distribution of the L0 pairs in the $M$ window (the pole bin, or
+five bins = 20~MeV around a continuum mass) is compared with the table after normalizing both to
+the same total ($\text{ndf}=\text{bins}-1$). Masses with fewer than 500 predicted pairs are skipped
+($K^+K^-$ at 1.30~GeV: 170).
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{llrrcc}
+\toprule
+& & & & \multicolumn{2}{c}{$\chi^2/\text{ndf}$ ($p$)} \\
+pair & mass window & $N_{\rm L0}$ (on) & $N/\text{pred}$ & weak on & weak off \\
+\midrule
+$\pi^+\pi^-$ & $K^0$ pole      & 45129819 & 1.0000 & 25.4/30 (0.71) & 38.3/30 (0.14) \\
+             & $\rho^0$ pole   & 54420290 & 0.9999 & 30.7/30 (0.43) & 26.6/30 (0.65) \\
+             & $\omega$ pole   & 885030   & 0.9999 & 28.1/30 (0.56) & 24.8/30 (0.73) \\
+             & $f_0(980)$ pole & 4155590  & 1.0003 & 34.8/30 (0.25) & 32.4/30 (0.35) \\
+             & 0.30~GeV        & 910865   & 1.0014 & 27.5/30 (0.60) & 21.5/30 (0.87) \\
+             & 0.45~GeV        & 3817511  & 0.9997 & 34.2/30 (0.27) & 28.0/30 (0.57) \\
+             & 0.60~GeV        & 2510706  & 1.0003 & 28.6/30 (0.54) & 27.1/30 (0.62) \\
+$K^+K^-$     & $\phi$ pole     & 7467195  & 0.9998 & 37.5/30 (0.16) & 39.4/30 (0.12) \\
+             & 1.10~GeV        & 9505     & 1.0050 & 38.7/29 (0.11) & 45.3/29 (0.03) \\
+\bottomrule
+\end{tabular}
+\caption{T2.2: \pass\ at all tested masses, both weak settings. With weak decays off the $K^0$ bin
+contains only the continuum underneath (745696 pairs), which still matches.}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.49\textwidth]{fig/dpdk_rho.png}\hfill
+\includegraphics[width=0.49\textwidth]{fig/dpdk_cont045.png}
+\caption{$dP/d\kappa|_M$ for $(\pi^+\pi^-)$, weak decays on, at the $\rho^0$ pole bin (left) and in
+the continuum window at 0.45~GeV (right); lower panels: MC/table.}
+\label{fig:dpdk}
+\end{figure}
+
+\subsection{T2.3: angular structure at L0}
+
+Pulls $a_\ell/\sigma(a_\ell)$ from the L0 profiles, over $(M,\kappa)$ bins with at least 50 entries.
+Criterion: $|\text{mean}|<3/\sqrt n$ and $|\text{width}-1|<3/\sqrt{2n}$. The bins are also split into
+those containing a pole and continuum-only bins, where a problem with the rotation in the
+three-body decayer would show.
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{llrrrrrr}
+\toprule
+& & \multicolumn{3}{c}{weak on} & \multicolumn{3}{c}{weak off} \\
+pair & moment, bins & $n$ & mean & width & $n$ & mean & width \\
+\midrule
+$\pi^+\pi^-$ & $a_1$, all       & 6651 & $-0.007$ & 1.015 & 6650 & $-0.007$ & 1.020 \\
+             & $a_1$, continuum & 6316 & $-0.008$ & 1.016 & 6347 & $-0.005$ & 1.023 \\
+             & $a_2$, all       & 6651 & $+0.004$ & 1.000 & 6650 & $-0.014$ & 0.985 \\
+             & $a_2$, continuum & 6316 & $+0.001$ & 0.999 & 6347 & $-0.014$ & 0.986 \\
+$K^+K^-$     & $a_1$, all       & 753  & $+0.042$ & 0.997 & 754  & $+0.037$ & 0.984 \\
+             & $a_2$, all       & 753  & $-0.028$ & 1.035 & 754  & $-0.031$ & 1.049 \\
+$\pi^+\pi^+$ & $a_2$, all       & 24   & $+0.341$ & 1.008 & 20   & $+0.217$ & 1.465 \\
+$\pi^-\pi^-$ & $a_2$, all       & 14   & $-0.315$ & 1.353 & 29   & $-0.075$ & 1.065 \\
+\bottomrule
+\end{tabular}
+\caption{T2.3: \pass\ for all ordered pairs and both weak settings; tolerances for $\pi^+\pi^-$:
+0.037 (mean), 0.026 (width).}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.6\textwidth]{fig/pulls_pippim.png}
+\caption{Distribution of the pulls of $a_1$ and $a_2$ over the 6651 populated $(M,\kappa)$ bins,
+$(\pi^+\pi^-)$ at L0, weak decays on, with a unit Gaussian.}
+\label{fig:pulls}
+\end{figure}
+
+\section{Summary}
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{llp{7.2cm}}
+\toprule
+milestone & test & result \\
+\midrule
+M0 & build, getters, weak switch; T0.1 & \pass \\
+M1 & T1.1--T1.5 & \pass\ (deviations $\le6\times10^{-14}$ for T1.1--T1.4) \\
+   & T1.6 & \pass\ for $\Cu\ge0$, $\CK+\Cu\ge0$, finiteness, $\kappa\to0$; $\CK\ge0$ waived \\
+M2 & T2.1, T2.2, T2.3 (both weak settings) & \pass \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent At level L0 the THERMINATOR events reproduce the table in mass, momentum and angle at the
+$10^{-4}$ level of the pole bins: the one-step decays of thermal parents, with the branching ratios
+as parsed and isotropic two- and three-body kinematics, are fully described by $\CK$ and $\Cu$.
+Like-sign kaon and all proton pairs are empty at L0 in both table and MC; they are an L1/L2
+observable. Not yet done: the sum-rule observables of the MC (net charges, cross-species pair
+counts, M4) and the plots and L1/L2 comparisons of M3.
+
+\end{document}

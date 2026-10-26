@@ -47,10 +47,13 @@ public:
   int GetParticleTypeIndex(TString aName);
   int GetParticleTypeCount();
   int ExistsParticleType(TString aName);
+  void AddDroppedChannel(const TString& aChannel);
+  const std::vector<TString>& GetDroppedChannels() const;
 
 private:
   std::vector<ParticleType> mParticleTable;
   std::map<TString, int> mParticleNames;
+  std::vector<TString> mDroppedChannels; // decay channels not added by Parser::ReadSHAREDecays
 };
 
 #endif

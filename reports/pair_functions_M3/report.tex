@@ -1,0 +1,421 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\usepackage{caption}
+\usepackage{float}
+\captionsetup{font=small,labelfont=bf}
+
+\newcommand{\CK}{\mathcal C_K}
+\newcommand{\Cu}{\mathcal C_u}
+\newcommand{\CQ}{\mathcal C_Q}
+\newcommand{\pass}{\textcolor{green!45!black}{\textbf{PASS}}}
+\newcommand{\fail}{\textcolor{red!70!black}{\textbf{FAIL}}}
+\newcommand{\code}[1]{\texttt{\hyphenchar\font=`\-#1}}
+\sloppy
+\emergencystretch=2em
+
+\title{Pair functions in a hadron resonance gas at rest:\\ results of milestone M3
+(levels L1, L2 and the thermal comparison)}
+\author{THERMINATOR 2 (hboltz fork), \code{src/work/README\_pair\_functions.md}}
+\date{24 October 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+This note reports milestone M3 of \code{README\_pair\_functions.md}: the comparisons of spec Sec.~5
+at the cumulative ancestry levels L0, L1 and L2, for both weak-decay settings. It covers the pair mass
+distribution $\rho(M)$, the normalized pair spectrum $dP/d\kappa|_M$ divided by the Boltzmann
+spectrum of a particle of mass $M$, and the Legendre moments $a_1$, $a_2$ of $\cos\theta^*$.
+Test T3.1 ($a_{1,2}=0$ at L1) passes for all populated ordered pairs and both weak settings. At L2,
+$a_2$ is strongly non-zero (cascades), but $a_1$, and with it the extracted $\CQ/(\CK+\Cu)$, is
+consistent with zero in every $(M,\epsilon_K)$ cell. This is not a defect. For same-species
+pairs in a charge-conjugation-symmetric gas at $\mu=0$, $a_1$ vanishes by symmetry
+(Sec.~\ref{sec:csym}). M4 (sum rule) has not been started.
+\end{abstract}
+
+\section{Setup}
+
+\paragraph{Input.} The Monte Carlo samples of M2 are reused unchanged: THERMINATOR HRG model
+($T=0.155$~GeV, $\mu=0$, $V=(30~\text{fm})^3$), $2\times10^5$ events per weak setting (8 seeds
+$\times\,2.5\times10^4$, merged), files \code{build/t2/mc\_weak\{on,off\}.root}. These files already
+contain the three exclusive levels L0, L1x $=$ L1$-$L0 and L2x $=$ L2$-$L1 for every ordered pair.
+M3 uses the cumulative levels
+\[
+\text{L0}\subset\text{L1}=\text{L0}+\text{L1x}\subset\text{L2}=\text{L1}+\text{L2x},
+\]
+with histograms added bin by bin and profiles combined through their sums.
+
+\paragraph{Code changes} (no library or MC change):
+\begin{itemize}\itemsep0pt
+\item \code{src/work/PairFunctions.h}: \code{BoltzmannRefKappa(M,k1,k2,T)}, the fraction of
+  $dP_{\rm th}/d\kappa=\kappa^2e^{-\epsilon_K/T}/(M^2TK_2(M/T))$ in a $\kappa$ bin (normalization by
+  quadrature).
+\item \code{src/work/ex\_pair\_functions\_compare.exe}: the per-bin prediction code was split into
+  \code{PredictM}/\code{PredictKappa} and the pull test into \code{PullTest}. A new M3 section adds the
+  level histograms, the per-parent table decomposition, $dP/d\kappa$ and its ratio to the reference,
+  $a_\ell(\kappa)$ and raw $\cos\theta^*$ at fixed $M$, test T3.1 and the $(M,\epsilon_K)$ cell table.
+  The T2.1--T2.3 output is byte-identical to the M2 logs (regression check). Run time: 4~s.
+\item \code{src/work/ex\_plot\_pair\_functions.C} (new, copied to the build directory by
+  \code{src/work/CMakeLists.txt}): all Sec.~5 plots for one weak setting, 36 PNG files per setting.
+\end{itemize}
+
+\paragraph{Reproduction.} In \code{build/t2}:
+\code{../work/ex\_pair\_functions\_compare.exe --mc mc\_weakon.root --output m3\_weakon.root} (and
+\code{weakoff}); then \code{root -b -q 'ex\_plot\_pair\_functions.C("m3\_weakon.root","weakon","plots\_m3")'}.
+The logs are copied next to this note (\code{m3\_weak\{on,off\}.log}).
+
+\paragraph{Errors.} As in M2, like-sign pairs are filled in both orderings, so their bin variances
+are doubled and their profile errors multiplied by $\sqrt2$. At L1 and L2 a particle can belong to
+several pairs (e.g.\ the $\pi^-$ of a $\pi^+\pi^+\pi^-$ final state), so Poisson errors on counts are
+a lower bound. For the moments the profile errors are validated directly: $a_1$ at L2, which
+vanishes by symmetry, has pull width $1.003$ (weak on) and $1.008$ (weak off) over about $10^4$
+bins (Sec.~\ref{sec:csym}).
+
+\paragraph{Populated pairs.} Pair counts in $2\times10^5$ events (weak on; weak off in parentheses):
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{lrrrc}
+\toprule
+ordered pair & L0 & L1 & L2 & L2 / L0 \\
+\midrule
+$\pi^+\pi^-$ & $1.915\times10^8$ & $2.771\times10^8$ & $3.846\times10^8$ & 2.009 (1.793) \\
+$\pi^+\pi^+$ & $1.224\times10^5$ & $1.224\times10^5$ & $7.323\times10^7$ & 598 (279) \\
+$K^+K^-$     & $8.761\times10^6$ & $8.840\times10^6$ & $9.288\times10^6$ & 1.060 (1.060) \\
+$K^+K^+$     & 0 & 0 & $2.26\times10^4$ & -- \\
+all $p\bar p$, $pp$, $\bar p\bar p$ & 0 & 0 & 0 & -- \\
+\bottomrule
+\end{tabular}
+\caption{Ordered-pair counts per level. The mirror pairs ($\pi^-\pi^+$, $K^-K^+$) contain the same pairs.
+$\pi^-\pi^-$ and $K^-K^-$ agree with $\pi^+\pi^+$ and $K^+K^+$ within statistics. No proton
+pair occurs at any level: no chain in the THERMINATOR list ends in $p\bar p$, and two protons
+would need a root with baryon number 2. Weak decays add 29\% of the L1 and 31\% of the L2
+$\pi^+\pi^-$ pairs ($K^0_S$, $\Lambda$, $\Xi$, $\Omega$ chains), and they more than double the
+like-sign pion pairs.}
+\label{tab:counts}
+\end{table}
+
+\section{Pair mass distribution at L0, L1, L2}
+
+L0 reproduces the table, as found in M2 (T2.1). Figs.~\ref{fig:rho}--\ref{fig:rho2} show the
+additional pairs.
+\begin{itemize}\itemsep1pt
+\item \textbf{L1$-$L0} (siblings from fed-down parents) has the same pole positions and continuum
+  shapes, with larger weights: $\pi^+\pi^-$ gains 40--45\% below 0.65~GeV (fed-down $\omega$,
+  $\eta$ and $K^0$, mostly through $K^*\to K\pi$) and 35--80\% in individual pole bins ($K^0$: $\times1.79$,
+  $\rho^0$: $\times1.38$, $\omega$: $\times1.35$, and $\times1.76$ at L2). Above about 1~GeV, L1 = L0: heavy parents are
+  essentially all primordial. $K^+K^-$ gains 0.9\%, 58\% of it in the $\phi$ bin.
+\item \textbf{L2$-$L1} (cascades) adds smooth continua with steps at the kinematic endpoints of the
+  chains. It doubles $\pi^+\pi^-$ at low mass and raises it by a factor 10--30 between 0.7 and
+  1.2~GeV. There the table has only the continuum under the poles (Fig.~\ref{fig:rho}, ratio
+  panel). For like-sign pions, L2 is 600 (280 with weak decays off) times the table, which
+  contains only the rare one-step channels with two equal-sign pions (Fig.~\ref{fig:rho2}).
+  $K^+K^-$ gains 5\%.
+\item The per-parent decomposition of the table (Fig.~\ref{fig:decomp}) shows the mixture
+  underlying each mass bin. Each pole sits in one bin on top of the continua of $\omega$, $\eta$,
+  $K^0$ (weak on) and heavier three-body parents.
+\end{itemize}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.78\textwidth]{fig/rho_levels_pippim_weakon.png}\\[1mm]
+\includegraphics[width=0.78\textwidth]{fig/rho_levels_pippim_weakoff.png}
+\caption{$d\rho/dM$ per unit volume for $(\pi^+\pi^-)$: MC at L0 (black), L1 (blue), L2 (green) and
+the table (red). Top: weak decays on; bottom: off (no $K^0$ pole). Lower panels: MC/table.}
+\label{fig:rho}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.49\textwidth]{fig/rho_levels_pippip_weakon.png}\hfill
+\includegraphics[width=0.49\textwidth]{fig/rho_levels_KpKm_weakon.png}
+\caption{As Fig.~\ref{fig:rho}, weak decays on, for $(\pi^+\pi^+)$ (left; L0 and L1 coincide) and
+$(K^+K^-)$ (right).}
+\label{fig:rho2}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.7\textwidth]{fig/rho_decomp_pippim_weakon.png}
+\caption{Table decomposition of $d\rho/dM$ for $(\pi^+\pi^-)$, weak decays on: the seven largest
+parents and the rest. These are the mixture weights $w_{\rm ch}=\rho_{\rm ch}/\rho_{ss'}$ of
+IM Eq.~(14).}
+\label{fig:decomp}
+\end{figure}
+
+\section{Normalized pair spectrum and the thermal reference}
+
+For each test mass, $dP/d\kappa|_M$ of each curve is divided by the Boltzmann reference integrated
+over the same $\kappa$ bins. For a pole bin the reference is evaluated at $m_a$. For a 20~MeV
+continuum window it is averaged over the five 4~MeV bins, weighted by the curve's own mass
+distribution (MC counts for a level, the table for the table). Table~\ref{tab:thermal} lists the
+first $\kappa$ bin (0--50~MeV) and the bin 1.0--1.1~GeV. Figs.~\ref{fig:dpdk}--\ref{fig:dpdk2}
+show the full curves.
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{llcccc}
+\toprule
+& & \multicolumn{4}{c}{ratio to Boltzmann, $\kappa\in[0,0.05]$ / $[1.0,1.1]$~GeV} \\
+pair & mass & table & L0 & L1 & L2 \\
+\midrule
+$\pi^+\pi^-$ & $K^0$ pole   & 1.040 / 0.982 & 1.035(5) / 0.982 & 1.293(4) / 0.848 & 1.293(4) / 0.847 \\
+             & $\rho^0$ pole & 1.005 / 0.998 & 1.003(6) / 0.999 & 1.064(5) / 0.952 & 1.066(5) / 0.952 \\
+             & $\omega$ pole & 1.014 / 0.991 & 1.006(45) / 0.996 & 1.066(40) / 0.959 & 1.105(36) / 0.921 \\
+             & $f_0(980)$ pole & 1.001 / 1.000 & 0.968(23) / 1.003 & 0.965(23) / 1.005 & 0.972(23) / 1.002 \\
+             & cont 0.30 & 1.779 / 0.469 & 1.784(36) / 0.463 & 1.931(31) / 0.423 & 1.751(24) / 0.476 \\
+             & cont 0.45 & 1.591 / 0.585 & 1.624(20) / 0.583 & 1.673(18) / 0.552 & 1.589(13) / 0.627 \\
+             & cont 0.60 & 1.500 / 0.589 & 1.486(28) / 0.591 & 1.551(25) / 0.558 & 1.456(17) / 0.635 \\
+$K^+K^-$     & $\phi$ pole & 1.001 / 1.000 & 0.976(18) / 1.002 & 0.973(18) / 1.003 & 0.974(18) / 1.003 \\
+             & cont 1.10 & 1.248 / 0.862 & 2.0(8) / 0.834 & 2.0(8) / 0.834 & 1.5(3) / 0.824 \\
+$\pi^+\pi^+$ & cont 0.45 & -- & -- & -- & 1.357(31) / 0.669 \\
+\bottomrule
+\end{tabular}
+\caption{$dP/d\kappa|_M$ divided by the Boltzmann reference, weak decays on (errors on the last
+digits). The bin at 1~GeV has errors below 0.01 except for $K^+K^-$ at 1.10~GeV. Weak decays off
+give the same values except at the $K^0$ mass. There the pole is gone and the window holds only
+continuum (table 1.641 / 0.572).}
+\label{tab:thermal}
+\end{table}
+
+\paragraph{Table versus Boltzmann.} The pattern is the one expected in spec Sec.~5.2:
+\begin{itemize}\itemsep1pt
+\item \emph{Poles:} quantum statistics only. A pole carries $f_a(\epsilon_K)$ of the parent, so the
+  ratio is $f_{\rm BE}/f_{\rm Boltz}\simeq1+e^{-\epsilon_K/T}$, largest at small $\kappa$. For the
+  pure pole this gives $+0.7\%$ at the $\rho^0$, $+4\%$ at the $K^0$ (BE, $m=0.498$~GeV) and $+0.1\%$ at
+  the $f_0(980)$ and $\phi$, falling below 1 at large $\kappa$ by normalization. In the $\omega$ bin
+  the ratio (1.4\%) is larger than the pole alone would give (0.6\%) because the bin also holds
+  continuum from the three-body parents, so the value is a mixture.
+  There is no two-body $\eta\to\pi^+\pi^-$ channel (CP-forbidden, not in the list), so the
+  ``few~\% at the $\eta$'' of the spec has no pole to test. The $\eta$ appears only through its
+  three-body continuum below $m_\eta-m_{\pi^0}=0.413$~GeV.
+\item \emph{Continua:} the recoil against the unobserved third daughter dominates. The pair is softer
+  than a thermal particle of the same mass: the ratio is 1.5--1.8 at small $\kappa$ and 0.47--0.59
+  at 1~GeV in $\pi^+\pi^-$, and 1.25 / 0.86 for $K^+K^-$ at 1.1~GeV. The table's like-sign continua
+  come only from heavy parents and are much harder.
+\end{itemize}
+
+\paragraph{Levels.} L0 follows the table at every tested mass (this is T2.2). At the $f_0(980)$ and
+$\phi$ poles the first $\kappa$ bin of L0 is $1.4\sigma$ low; the bins at $\kappa\ge0.05$~GeV agree.
+L1 is softer than the thermal parent spectrum: fed-down parents come from heavier decays. At the
+$\rho^0$ and $K^0$ poles the ratio rises by 6\% and 29\% at small $\kappa$ and falls by 5\% and 15\%
+at 1~GeV. L2 equals L1 in pole bins dominated by the pole ($K^0$, $\rho^0$), where cascade
+pairs are a negligible fraction. On the continua and at the $\omega$ bin, L2 differs from L1 in
+shape. The heavier, cascade-dominated pairs are harder at large $\kappa$ (0.63 vs 0.55 at 1~GeV
+for $M=0.45$~GeV). The like-sign L2 spectra are softer than Boltzmann at small $\kappa$ (1.36 at
+0.45~GeV). As expected (spec Sec.~5, table), L1 and L2 depart from the table in $dP/d\kappa$; L0
+does not.
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig/dPdk_pippim_weakon.png}\\[2mm]
+\includegraphics[width=\textwidth]{fig/dPdk_pippim_weakoff.png}
+\caption{$(dP/d\kappa)/(dP_{\rm th}/d\kappa)$ for $(\pi^+\pi^-)$ at the test masses: table (red),
+MC L0 (black), L1 (blue), L2 (green). Top: weak decays on; bottom: off. Continuum panels on a log
+scale.}
+\label{fig:dpdk}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.62\textwidth]{fig/dPdk_KpKm_weakon.png}\\[2mm]
+\includegraphics[width=\textwidth]{fig/dPdk_pippip_weakon.png}
+\caption{As Fig.~\ref{fig:dpdk}, weak decays on, for $(K^+K^-)$ (top) and $(\pi^+\pi^+)$ (bottom;
+only L2 has 500 or more pairs at most masses).}
+\label{fig:dpdk2}
+\end{figure}
+
+\section{Angular structure}
+
+\subsection{T3.1: $a_1$, $a_2$ at L1}
+
+The pulls $a_\ell/\sigma(a_\ell)$ are taken over the $(M,\kappa)$ profile bins with at least 50
+entries, with the same criterion as T2.3: $|\text{mean}|<3/\sqrt n$ and $|\text{width}-1|<3/\sqrt{2n}$.
+L1x alone (siblings from fed-down parents only) is also tested. Any parent spectrum gives
+$a_\ell=0$ for siblings, because with a constant matrix element the 12 subsystem decays
+isotropically in its own rest frame.
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{lllrrrrrr}
+\toprule
+& & & \multicolumn{3}{c}{weak on} & \multicolumn{3}{c}{weak off} \\
+pair & level & moment & $n$ & mean & width & $n$ & mean & width \\
+\midrule
+$\pi^+\pi^-$ & L1  & $a_1$ & 6664 & $-0.005$ & 1.013 & 6662 & $-0.010$ & 1.018 \\
+             & L1  & $a_2$ & 6664 & $+0.010$ & 0.998 & 6662 & $-0.017$ & 0.989 \\
+             & L1x & $a_1$ & 3288 & $-0.005$ & 0.980 & 3281 & $+0.003$ & 1.004 \\
+             & L1x & $a_2$ & 3288 & $+0.017$ & 0.989 & 3281 & $-0.020$ & 1.003 \\
+$K^+K^-$     & L1  & $a_1$ & 753 & $+0.039$ & 0.996 & 754 & $+0.035$ & 0.987 \\
+             & L1  & $a_2$ & 753 & $-0.021$ & 1.040 & 754 & $-0.029$ & 1.050 \\
+             & L1x & $a_1$ & 81  & $-0.133$ & 1.023 & 82  & $-0.073$ & 0.912 \\
+             & L1x & $a_2$ & 81  & $+0.205$ & 1.139 & 82  & $-0.002$ & 1.062 \\
+$\pi^+\pi^+$ & L1  & $a_2$ & 24  & $+0.341$ & 1.008 & 20  & $+0.217$ & 1.465 \\
+$\pi^-\pi^-$ & L1  & $a_2$ & 14  & $-0.315$ & 1.353 & 29  & $-0.075$ & 1.065 \\
+\bottomrule
+\end{tabular}
+\caption{T3.1: \pass\ for all ordered pairs and both weak settings. The split into pole and
+continuum bins also passes (logs). Like-sign L1 = L0 (L1x is empty), and $K^\pm K^\pm$ and all proton
+pairs have no populated bins at L1. Tolerances for $\pi^+\pi^-$ L1: 0.037 (mean), 0.026 (width).}
+\label{tab:t31}
+\end{table}
+
+\subsection{L2: $a_2\neq0$, $a_1=0$}\label{sec:csym}
+
+Pull summary at L2 over all populated bins (information, no test):
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{llrrrrrr}
+\toprule
+& & \multicolumn{3}{c}{weak on} & \multicolumn{3}{c}{weak off} \\
+pair & moment & $n$ & mean & width & $n$ & mean & width \\
+\midrule
+$\pi^+\pi^-$ & $a_1$ & 10020 & $+0.009$ & 1.003 & 9565 & $-0.013$ & 1.008 \\
+             & $a_2$ & 10020 & $-7.85$ & 14.7 & 9565 & $-8.84$ & 15.5 \\
+$\pi^+\pi^+$ & $a_2$ & 9143 & $-3.46$ & 9.2 & 8493 & $-4.29$ & 9.5 \\
+$K^+K^-$     & $a_1$ & 2734 & $-0.028$ & 1.013 & 2726 & $+0.010$ & 1.025 \\
+             & $a_2$ & 2734 & $-0.20$ & 1.65 & 2726 & $-0.23$ & 1.65 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{$a_2$.} Cascades produce a strong $\epsilon_Q^2$ dependence (Figs.~\ref{fig:a2},
+\ref{fig:cth}). For $(\pi^+\pi^-)$, $a_2$ at L2 falls roughly linearly with $\kappa$ to $-0.13$
+($M=0.45$~GeV) and $-0.21$ ($M=0.60$~GeV) at $\kappa=2$~GeV. It is positive (up to $+0.12$) at
+$M=0.30$~GeV and small in the pole bins, where siblings dominate. Like-sign pions reach
+$a_2\simeq-0.16$. For $K^+K^-$ the effect is a few $10^{-2}$, above about 1.03~GeV. In every case
+$a_2$ is zero at L0 and L1.
+
+\noindent\textbf{$a_1$ vanishes by charge-conjugation symmetry.} The spec expects $a_1\ne0$ at L2
+in general. For the pairs measured here it is zero, and this is exact. THERMINATOR's HRG at
+$\mu=0$ produces each particle and its antiparticle with the same Poisson mean, and the decay tables
+are charge conjugate. The ensemble of final states is therefore invariant under C. C maps a
+configuration with $\pi^+$ at $p_1$ and $\pi^-$ at $p_2$ onto one with $\pi^-$ at $p_1$ and
+$\pi^+$ at $p_2$, with equal probability. For the ordered pair $(\pi^+\pi^-)$ this exchanges
+$p_1\leftrightarrow p_2$, i.e.\ $Q\to-Q$, $\epsilon_Q\to-\epsilon_Q$, $\cos\theta^*\to-\cos\theta^*$.
+Hence $\langle P_1\rangle=0$, i.e.\ $\CQ^{+-}=0$, at every $(M,\kappa)$ and at every level. Single
+chains such as $K^{*+}\to K^0\pi^+$, $K^0\to\pi^+\pi^-$ do carry a dipole, but the
+charge-conjugate chain cancels it. For like-sign pairs $a_1=0$ by the symmetric filling. The same
+argument applies to $K^+K^-$. A non-zero $\CQ$ requires cross-species pairs ($\pi K$, $\pi p$, out
+of scope, spec Sec.~8) or $\mu_B\neq0$. The MC confirms this to high precision (next table), and
+it gives a free check of the L2 profile errors: the $a_1$ pulls have width 1.003, so the
+correlations between pairs that share a particle do not inflate the moment errors noticeably.
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig/a2_pippim_weakon.png}\\[2mm]
+\includegraphics[width=\textwidth]{fig/a1_pippim_weakon.png}
+\caption{$a_2(\kappa)$ (top) and $a_1(\kappa)$ (bottom) for $(\pi^+\pi^-)$ at the test masses, weak
+decays on, MC L0 (black), L1 (blue), L2 (green). The isolated 1--2$\sigma$ points at the smallest
+$\kappa$ in the $\omega$ and $f_0(980)$ bins come from bins with only about 500--1700 pairs.}
+\label{fig:a2}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig/a2_pippip_weakon.png}
+\caption{$a_2(\kappa)$ for $(\pi^+\pi^+)$, weak decays on (L2 only populated at most masses).}
+\label{fig:a2pp}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\textwidth]{fig/cth_pippim_weakon.png}
+\caption{Raw $\cos\theta^*$ distributions (normalized to mean 1) for $(\pi^+\pi^-)$ in the $\rho^0$
+pole bin, $\kappa\in[0.1,0.3]$ (left) and $[0.5,0.8]$~GeV (right), at L0, L1, L2. The distributions
+are flat at all three levels (deviations below 0.3\%): the pole bin is dominated by siblings even
+at L2. It is clearly visible in the continuum windows (Fig.~\ref{fig:a2}).}
+\label{fig:cth}
+\end{figure}
+
+\subsection{L2 table of $a_1$, $a_2$ and $\CQ/(\CK+\Cu)$}
+
+In each cell the profile sums are combined, and
+$\CQ/(\CK+\Cu)=a_1/\langle 2\kappa p^*/(3M\epsilon_K)\rangle$, with the factor averaged over the profile
+bins of the cell weighted by their entries (equal masses, spec Sec.~5.3). The complete tables
+(L1 and L2, both weak settings, all populated pairs, including like-sign $a_2$) are in the logs
+(\code{M3tab} lines) and in the output ROOT files (\code{a1\_cells\_*}, \code{a2\_cells\_*},
+\code{CQratio\_cells\_*}, \code{epsK\_cells\_*}). A selection for $(\pi^+\pi^-)$, weak decays on:
+
+\begin{table}[H]
+\centering\footnotesize
+\begin{tabular}{llrrrrr}
+\toprule
+$M$ band (GeV) & $\kappa$ band (GeV) & $\langle\epsilon_K\rangle$ & $N$ & $10^3a_1$ & $10^3a_2$ & $10^3\,\CQ/(\CK+\Cu)$ \\
+\midrule
+0.279--0.40 & 0.0--0.2 & 0.376 & $8.2\times10^6$ & $-0.14\pm0.20$ & $-6.30\pm0.16$ & $-2.0\pm2.9$ \\
+            & 0.4--0.7 & 0.634 & $2.5\times10^7$ & $-0.24\pm0.12$ & $-6.03\pm0.09$ & $-1.6\pm0.7$ \\
+            & 1.0--2.0 & 1.236 & $2.2\times10^6$ & $-0.26\pm0.39$ & $-14.29\pm0.29$ & $-1.4\pm2.1$ \\
+0.40--0.50  & 0.0--0.2 & 0.498 & $9.3\times10^6$ & $-0.14\pm0.19$ & $-1.52\pm0.15$ & $-1.8\pm2.5$ \\
+            & 0.4--0.7 & 0.723 & $5.1\times10^7$ & $-0.09\pm0.08$ & $-14.12\pm0.06$ & $-0.4\pm0.4$ \\
+            & 1.0--2.0 & 1.300 & $8.6\times10^6$ & $-0.10\pm0.19$ & $-25.57\pm0.15$ & $-0.4\pm0.8$ \\
+0.50--0.70  & 0.4--0.7 & 0.798 & $2.7\times10^7$ & $+0.17\pm0.11$ & $-51.78\pm0.08$ & $+0.9\pm0.5$ \\
+            & 1.0--2.0 & 1.335 & $4.0\times10^6$ & $-0.15\pm0.25$ & $-131.89\pm0.20$ & $-0.6\pm0.9$ \\
+0.70--0.85  & 0.4--0.7 & 0.951 & $4.1\times10^7$ & $+0.15\pm0.09$ & $-8.75\pm0.07$ & $+0.8\pm0.5$ \\
+0.85--1.20  & 0.4--0.7 & 1.101 & $5.6\times10^6$ & $+0.04\pm0.24$ & $-1.42\pm0.19$ & $+0.3\pm1.5$ \\
+1.20--2.00  & 0.4--0.7 & 1.432 & $2.4\times10^6$ & $+0.19\pm0.37$ & $-0.76\pm0.29$ & $+1.5\pm2.9$ \\
+\bottomrule
+\end{tabular}
+\caption{L2 cell averages for $(\pi^+\pi^-)$, weak decays on. Over all 30 cells (6 mass bands
+$\times$ 5 $\kappa$ bands) $\CQ/(\CK+\Cu)$ is consistent with zero: $\chi^2/\text{ndf}=32.3/30$
+(weak off: 25.7/30). For $(K^+K^-)$, 20 cells: 12.6/20 (weak off: 17.0/20). The same holds at L1:
+35.3/30 and 11.9/20 (weak on). Typical sensitivity: $|\CQ/(\CK+\Cu)|\lesssim10^{-3}$ in the
+populated $\pi\pi$ cells.}
+\label{tab:cells}
+\end{table}
+
+\section{Statistics}
+The spec asks for $\lesssim1\%$ statistical error on $\rho(M)$ at the $\rho^0$ pole bin and on
+$a_{1,2}$ in the populated bins. With $2\times10^5$ events the $\rho^0$ bin holds $5.4\times10^7$
+L0 pairs (0.014\%). The profile errors of $a_{1,2}$ in the $(M,\kappa)$ bins are $\lesssim1\%$
+absolute wherever $\gtrsim10^4$ pairs per bin are present, i.e.\ over most of the $\pi^+\pi^-$ range
+below 1.5~GeV. They are larger at the edges of phase space and for $K^+K^-$ away from the $\phi$.
+The cell table reaches $10^{-4}$ in $a_1$. No new events were generated for M3.
+
+\section{Summary}
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{lp{10.5cm}}
+\toprule
+item & result \\
+\midrule
+Sec.~5 plots & made for both weak settings and all populated ordered pairs
+  (\code{ex\_plot\_pair\_functions.C}, 36 figures per setting) \\
+$\rho(M)$ & L0 = table; L1 same poles and shapes with larger weights (+45\% $\pi^+\pi^-$ below
+  0.65~GeV); L2 adds cascade continua ($\times2$ total for $\pi^+\pi^-$, $\times600$ for like-sign pions) \\
+$dP/d\kappa$ vs Boltzmann & table at poles $=1+O(e^{-m/T})$ (0.5\% $\rho$, 4\% $K^0$); continua
+  1.5--1.8 at small $\kappa$ (recoil); L0 follows the table, L1 and L2 do not (non-thermal parents) \\
+T3.1 & \pass\ (L1 and L1x, both weak settings) \\
+L2 table & $a_2$ up to $-0.13$ ($\pi^+\pi^-$) and $-0.16$ ($\pi^+\pi^+$); $a_1$ and
+  $\CQ/(\CK+\Cu)$ consistent with 0 in all cells, by C symmetry at $\mu=0$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Points for discussion before M4.}
+\begin{enumerate}\itemsep1pt
+\item The $a_1$ route to $\CQ$ (spec Sec.~5.3) gives zero for all same-species pairs of a
+  C-symmetric gas, so $\CQ$ is not accessible with the pairs currently in scope. The cascade
+  structure is visible only through $a_2$ (an $\epsilon_Q^2$ term). Measuring $\CQ$ would need
+  cross-species pairs (e.g.\ $\pi^+K^-$ from $K^*$ chains) or $\mu_B\ne0$.
+\item There is no $\eta\to\pi^+\pi^-$ pole in the THERMINATOR list, so the spec's ``few~\% at
+  the $\eta$'' QS check has no pole. The largest QS effect available at a pole is the $K^0$ (4\%,
+  weak decays on).
+\item Proton pairs are empty at all levels; the proton-pair part of the spec is void for the HRG.
+\end{enumerate}
+
+\noindent M4 (charge sum rule, T4.1, T4.2) has not been started. It needs MC changes (net charges
+and cross-species pair counts per event) and new MC runs.
+
+\end{document}

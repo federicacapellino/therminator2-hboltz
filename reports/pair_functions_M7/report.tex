@@ -1,0 +1,146 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\usepackage{caption}
+\usepackage{float}
+\captionsetup{font=small,labelfont=bf}
+
+\newcommand{\CK}{\mathcal C_K}
+\newcommand{\Cu}{\mathcal C_u}
+\newcommand{\pass}{\textcolor{green!45!black}{\textbf{PASS}}}
+\newcommand{\code}[1]{\texttt{\hyphenchar\font=`\-#1}}
+\sloppy
+\emergencystretch=2em
+
+\title{Pair functions in a hadron resonance gas at rest:\\ results of milestone M7 (L1 table)}
+\author{THERMINATOR 2 (hboltz fork), \code{src/work/hrg\_pair\_density\_spec.md}, Sec.~9}
+\date{26 October 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+This note reports milestone M7 of Part~II of the spec: the L1 pair-function table. In it, the
+thermal parent distribution of the M1 table is replaced by the full single-particle current
+$S_c=\mathcal A_cp+\mathcal B_c\epsilon u$ of the parent, built in M6 (thermal plus fed-down). All
+tests pass for both weak-decay settings. T7.1: with thermal-only currents the L1 code reproduces the
+M1 table to $6\times10^{-14}$. T7.2: $\int dM\rho^{\rm L1}=c^{\rm L1}$ to $6\times10^{-14}$, and
+every pole carries $B\,n_c$. T7.3: positivity, timelike, finite as $\kappa\to0$. T7.4: versus the
+event MC at L1 ($2\times10^5$ events per setting, the M2 files), $\rho(M)$ for all ordered pairs and
+$dP/d\kappa|_M$ at all test masses pass, with $p\ge0.028$. The L1 table reproduces the
+non-thermal pair spectra that the L0 table misses: up to $\pm30\%$ at the $K^0$ pole and $\pm10\%$
+at the $\rho^0$ pole. M8 has not been started.
+\end{abstract}
+
+\section{Implementation}
+\paragraph{Formulas} (spec Sec.~9.3, gas at rest). With $\mathcal D=n\,B/\Phi_3$,
+$\mathcal A=n\,B/\Phi_2$ ($n$ = number of ordered daughter slots giving the same term; the
+$g/(2\pi)^3$ is inside the current), $a=\mathcal A_c(\epsilon_P)$ and $b=\mathcal B_c(\epsilon_P)$:
+\begin{align*}
+\text{pole:}&\quad \CK=\frac{\mathcal A}{m_c}\mathcal A_c(\epsilon_K)\,\delta(M-m_c),\quad
+\Cu=\frac{\mathcal A}{m_c}\mathcal B_c(\epsilon_K)\,\delta(M-m_c),\\
+\text{continuum:}&\quad \CK=\frac{2\pi\mathcal Dp_3^*}{\kappa M^2}\!\int_{-1}^1\!dt\,(\kappa E_P^*+\epsilon_Kp_3^*t)\,a,\qquad
+\Cu=-\frac{2\pi\mathcal Dp_3^{*2}}{\kappa\epsilon_K}\!\int_{-1}^1\!dt\,t\,a+\frac{2\pi\mathcal Dp_3^*}{M\epsilon_K}\!\int_{-1}^1\!dt\,\epsilon_P\,b .
+\end{align*}
+The continuum $\Cu$ is the L0 expression with $f_a\to\mathcal A_c$, plus the $\mathcal B_c$ term. With
+a thermal-only current the code therefore performs the M1 arithmetic (T7.1). The sum $\CK+\Cu$ equals
+the spec's $(2\pi\mathcal Dp_3^*/M\epsilon_K)\int dt\,\epsilon_P(\mathcal A_c+\mathcal B_c)$. Since
+the parent spectrum integrates out, $\rho_{\rm ch}(M)=n\,B\,n_c\,M\Phi_2\Phi_2/\Phi_3$: the Dalitz
+projection of M1 with $n_a\to n_c$. The bin-integrated $\rho(M)$ predictions of M2 therefore carry
+over with $n_c$.
+
+\paragraph{Code.} \code{PairFunctions.h}: \code{CKCu3Current}, \code{ToL1} (switches the M1
+contributions to the parent currents and $n_c$, and recomputes the counting as
+$c^{\rm L1}_{ss'}=\sum_cn_c\sum_{\rm ch}B\,n_s(n_{s'}-\delta_{ss'})$), and the $\kappa$-binned
+predictions \code{PoleDensityKappa} and \code{ContDensityMK}, which dispatch on the contribution.
+\code{ex\_pair\_functions\_table.exe --level L1} (also \code{--norm quad|mc}) writes the same file
+format as M1. The pole tree adds $\mathcal A_c$ (branch \code{fa}) and $\mathcal A_c+\mathcal B_c$
+(\code{abc}) on the $\kappa$ centres. \code{ex\_pair\_functions\_compare.exe --level L1} runs the
+T2.1/T2.2 code against the cumulative MC level L1, with currents at the Integrator normalization, and
+prints them as T7.4rho/T7.4kap. The default (\code{--level L0}) output of both programs is unchanged:
+the comparison log is identical to the M2 log apart from its header line. The table log differs only
+in the T1.5 rms in the third digit, because \code{--seed 0} gives a random ROOT seed.
+Run time: about 80~s for the table (40~s for the currents), and a few minutes for the comparison.
+
+\section{Results}
+\begin{verbatim}
+cd build/t2
+../work/ex_pair_functions_table.exe --level L1 --weak on|off \
+    --output m7/pair_table_L1_weak{on,off}.root
+../work/ex_pair_functions_compare.exe --level L1 --mc mc_weak{on,off}.root \
+    --output m7/compare_L1_weak{on,off}.root
+\end{verbatim}
+
+\begin{table}[H]
+\centering\footnotesize
+\begin{tabular}{llll}
+\toprule
+test & quantity & worst (weak on / off) & \\
+\midrule
+T7.1 & thermal-only L1 vs M1, $2.3\times10^6$ values: continua / poles & $5.9\times10^{-14}$ / $4.4\times10^{-16}$ (both) & \pass\\
+T7.2 & $\rho(M)$ from $\kappa$ integral vs Dalitz with $n_c$, 984 points & $6.2\times10^{-14}$ (both) & \pass\\
+T7.2 & every pole carries $n\,B\,n_c$ & $3.8\times10^{-15}$ (both) & \pass\\
+T7.2 & $\int dM\rho^{\rm L1}_{ss'}=c^{\rm L1}_{ss'}$, 12 ordered pairs & $5.6\times10^{-14}$ (both) & \pass\\
+T7.3 & $2.3\times10^6$ cells: non-finite, $\CK+\Cu\le0$, spacelike, $\Cu<0$ & 0, 0, 0, 0 (both) & \pass\\
+T7.3 & $\kappa=10^{-8}$ finite; $\kappa=10^{-6}$ vs $10^{-4}$ rel.\ change & 410/410; $3.8\times10^{-6}$ & \pass\\
+T7.4 & $\rho(M)$, MC L1 vs L1 table, $\chi^2$ per ordered pair & min $p$ = 0.030 / 0.217 & \pass\\
+T7.4 & $dP/d\kappa|_M$, 7 $\pi\pi$ + 2 $KK$ masses, shape $\chi^2$ & min $p$ = 0.109 / 0.028 & \pass\\
+\bottomrule
+\end{tabular}
+\caption{M7 tests. The \code{--stat boltzmann} table gives the same verdicts. $\CK<0$ in 17.9\% of
+the cells, as at L0 (allowed).}
+\end{table}
+
+\paragraph{Size of the L1 correction.} The counting gives
+$c^{\rm L1}_{\pi^+\pi^-}/c^{\rm L0}_{\pi^+\pi^-}=1.448$ with weak decays on and 1.341 with them off.
+This agrees with the MC pair-count ratio L1/L0 of M3 (1.447). For $K^+K^-$ the ratio is 1.009, and
+like-sign pairs are unchanged (1.000). Fig.~\ref{fig:ratio} shows where the extra weight sits: the
+three-body continua below 0.65~GeV ($\times1.33$--1.45), the $K^0$ pole ($\times1.79$,
+weak on), and the $\rho^0$, $\omega$, $f_2$, $f_0(1370)$ poles.
+
+\paragraph{T7.4.} Pole bins (weak on, $\pi^+\pi^-$): $\rho^0$ $75\,150\,199$ (MC) vs
+$75\,153\,848$ (pull $-0.42$); $K^0$ $80\,881\,736$ vs $80\,883\,488$ ($-0.19$); $f_2(1270)$ $+0.78$;
+$\phi\to K^+K^-$ $-0.55$. All pole pulls are below 2. The $dP/d\kappa$ shapes (Fig.~\ref{fig:dpdk})
+are where L1 differs qualitatively from L0. The fed-down parents ($K^0$ from $K^*$, $\rho^0$ from
+heavier states) have a softer spectrum than a thermal one. Divided by the Boltzmann reference, the
+L1 MC at the $K^0$ pole runs from 1.29 at $\kappa=0$ to 0.74 at 2~GeV, where the L0 table stays
+within 4\% of 1; the L1 table follows the MC bin by bin. The same pattern appears at the $\rho^0$
+pole (1.07 to 0.89). At the $f_0(980)$, with no feed-down, L0 and L1 coincide.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.49\textwidth]{fig/rho_pippim_weakon.png}
+\includegraphics[width=0.49\textwidth]{fig/rho_KpKm_weakon.png}
+\caption{T7.4, weak on: $d\rho/dM$ of $\pi^+\pi^-$ (left) and $K^+K^-$ (right), MC at L1 (points),
+L1 table (red), L0 table (blue, dashed); pulls with respect to the L1 table. Weak off:
+\code{fig/rho\_*\_weakoff.png}.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{fig/dpdk_weakon.png}
+\caption{T7.4, weak on: $dP/d\kappa|_M$ of $\pi^+\pi^-$ divided by the Boltzmann spectrum of a particle
+of mass $M$: MC at L1, L1 table, L0 table. Weak off: \code{fig/dpdk\_weakoff.png}.}
+\label{fig:dpdk}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{fig/table_ratio.png}
+\caption{$\rho^{\rm L1}/\rho^{\rm L0}$ of the tables per $M$ bin (0 where the L0 table is empty).}
+\label{fig:ratio}
+\end{figure}
+
+\section{Outputs and status}
+\code{build/t2/m7/}: \code{pair\_table\_L1\_weak\{on,off\}.root}, \code{pair\_table\_L1\_weakon\_boltz.root},
+\code{compare\_L1\_weak\{on,off\}.root} (also the $dP/d\kappa$ curves of the L1 table and of the MC
+levels), and the logs (copied here). M7: all tests \pass. Next: M8 (chain kernels and the L2 table).
+\end{document}

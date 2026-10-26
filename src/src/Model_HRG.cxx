@@ -57,6 +57,10 @@ Model_HRG::~Model_HRG() {}
 
 double Model_HRG::GetHyperCubeVolume() { return mHyperCube; }
 
+double Model_HRG::GetTemperature() const { return mTemperature; }
+
+double Model_HRG::GetVolume() const { return mSize * mSize * mSize; }
+
 double Model_HRG::GetIntegrand(ParticleType* aPartType, ParticleCoor& coor) {
 
   double Spin = aPartType->GetSpin();

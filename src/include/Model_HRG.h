@@ -43,6 +43,9 @@ public:
   double GetHyperCubeVolume() override;
   void AddParameterBranch(TTree* aTree) override;
 
+  double GetTemperature() const; // [GeV]
+  double GetVolume() const;      // box volume [GeV^-3]
+
 private:
   double mTemperature;
   double mSize;

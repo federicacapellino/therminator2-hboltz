@@ -13,7 +13,10 @@
 //   T3.1  a1, a2 at L1 consistent with 0 (pulls)
 // With --level L1 (milestone M7) the table is the L1 table (parent currents, spec Sec. 9.3) and the
 // MC is the cumulative L1 level; only the rho(M) and dP/dkappa tests run, labelled T7.4rho and
-// T7.4kap (same criteria as T2.1, T2.2).
+// T7.4kap (same criteria as T2.1, T2.2). With --level L2 --table <file> (milestone M8) the chain
+// part of the L2 table (ex_pair_functions_table.exe --level L2) is added to the L1 prediction, its
+// kernel variance is added to the chi2, the MC is the cumulative L2 level, and the tests are labelled
+// T8.3rho and T8.3kap.
 // Predictions are normalized to the Integrator multiplicities that the MC sampled (--norm mc,
 // default) or to the quadrature densities of the table (--norm quad). Run in the directory that
 // holds the fmultiplicity cache used by the MC. The plots are made by ex_plot_pair_functions.C.
@@ -21,7 +24,7 @@
 // Usage:
 //   ex_pair_functions_compare.exe --mc <file> [--share <dir>] [--output <file>]
 //                                 [--norm mc|quad] [--samples <N>] [--minexp <x>]
-//                                 [--level L0|L1]
+//                                 [--level L0|L1|L2] [--table <L2 table file>]
 
 #include "CLI11.hpp"
 #include "Integrator.h"
@@ -59,21 +62,26 @@ struct Chi2 {
   int ndf     = 0;
 };
 
+// extraVar (optional): variance of the expectation itself (L2 kernel statistics), added in
+// quadrature.
 static Chi2 PoissonChi2(const std::vector<double>& n, const std::vector<double>& mu, double minExp,
-                        int constraints = 0, double varFactor = 1.) {
+                        int constraints = 0, double varFactor = 1.,
+                        const std::vector<double>* extraVar = nullptr) {
   Chi2 r;
-  double nPool = 0., muPool = 0.;
+  double nPool = 0., muPool = 0., varPool = 0.;
   for (size_t i = 0; i < n.size(); i++) {
+    double ev = extraVar ? (*extraVar)[i] : 0.;
     if (mu[i] >= minExp) {
-      r.chi2 += (n[i] - mu[i]) * (n[i] - mu[i]) / (varFactor * mu[i]);
+      r.chi2 += (n[i] - mu[i]) * (n[i] - mu[i]) / (varFactor * mu[i] + ev);
       ++r.ndf;
     } else {
       nPool += n[i];
       muPool += mu[i];
+      varPool += ev;
     }
   }
   if (muPool >= minExp) {
-    r.chi2 += (nPool - muPool) * (nPool - muPool) / (varFactor * muPool);
+    r.chi2 += (nPool - muPool) * (nPool - muPool) / (varFactor * muPool + varPool);
     ++r.ndf;
   }
   r.ndf -= constraints;
@@ -179,6 +187,7 @@ int main(int argc, char** argv) {
   std::string outputFile = "";
   std::string norm       = "mc";
   std::string level      = "L0";
+  std::string tableFile  = "";
   int nSamples  = 1000000;
   double minExp = 5.;
 
@@ -192,9 +201,10 @@ int main(int argc, char** argv) {
   app.add_option("--samples", nSamples,   "Integrator samples (must match the MC)")
       ->default_val(1000000);
   app.add_option("--minexp",  minExp,     "minimum expected count per chi2 bin")->default_val(5.);
-  app.add_option("--level",   level,      "table and MC level: L0 (default) or L1")
+  app.add_option("--level",   level,      "table and MC level: L0 (default), L1 or L2")
       ->default_str("L0")
-      ->check(CLI::IsMember({"L0", "L1"}));
+      ->check(CLI::IsMember({"L0", "L1", "L2"}));
+  app.add_option("--table",   tableFile,  "L2: output of ex_pair_functions_table.exe --level L2");
   CLI11_PARSE(app, argc, argv);
 
   TFile fin(mcFile.c_str());
@@ -202,11 +212,33 @@ int main(int argc, char** argv) {
   std::string weak   = fin.Get<TNamed>("weak")->GetTitle();
   std::string mcHash = fin.Get<TNamed>("dbhash")->GetTitle();
   const double nEv   = fin.Get<TH1D>("hEvents")->GetBinContent(1);
-  const bool l1 = (level == "L1");
-  if (outputFile.empty()) outputFile = (l1 ? "compare_L1_weak" : "compare_weak") + weak + ".root";
-  const char* tRho = l1 ? "T7.4rho" : "T2.1";
-  const char* tKap = l1 ? "T7.4kap" : "T2.2";
-  const char* mcLev = l1 ? "L1" : "L0";
+  const bool l2 = (level == "L2");
+  const bool l1 = (level == "L1") || l2; // L2 prediction = L1 table + chain part
+  const int mcLevel = l2 ? 2 : (l1 ? 1 : 0);
+  if (outputFile.empty())
+    outputFile = (l1 ? "compare_" + level + "_weak" : std::string("compare_weak")) + weak + ".root";
+  const char* tRho = l2 ? "T8.3rho" : (l1 ? "T7.4rho" : "T2.1");
+  const char* tKap = l2 ? "T8.3kap" : (l1 ? "T7.4kap" : "T2.2");
+  const char* mcLev = kLevel[mcLevel];
+
+  std::unique_ptr<TFile> ftab;
+  if (l2) {
+    ftab.reset(TFile::Open(tableFile.c_str()));
+    if (!ftab || ftab->IsZombie() || !ftab->Get<TNamed>("level") ||
+        std::string(ftab->Get<TNamed>("level")->GetTitle()) != "L2") {
+      std::cerr << "Error: --level L2 needs --table <output of ex_pair_functions_table.exe "
+                   "--level L2>\n";
+      return 1;
+    }
+    for (const char* key : {"weak", "norm"}) {
+      std::string want = std::string(key) == "weak" ? weak : norm;
+      if (want != ftab->Get<TNamed>(key)->GetTitle()) {
+        std::cerr << "Error: table file has " << key << " " << ftab->Get<TNamed>(key)->GetTitle()
+                  << ", this run " << want << "\n";
+        return 1;
+      }
+    }
+  }
 
   auto model   = std::make_unique<Model_HRG>();
   auto tPartDB = std::make_unique<ParticleDB>(shareDir);
@@ -215,6 +247,10 @@ int main(int argc, char** argv) {
   if (ParticleDBHash(db) != mcHash) {
     std::cerr << "Error: ParticleDB hash " << ParticleDBHash(db) << " differs from the MC file ("
               << mcHash << ")\n";
+    return 1;
+  }
+  if (l2 && mcHash != ftab->Get<TNamed>("dbhash")->GetTitle()) {
+    std::cerr << "Error: ParticleDB hash of the table file differs from the MC file\n";
     return 1;
   }
   Integrator integ(nSamples, model.get());
@@ -251,14 +287,13 @@ int main(int argc, char** argv) {
   bool allT21 = true, allT22 = true, allT23 = true, allT31 = true;
 
   // ---- T2.1: rho(M) ---------------------------------------------------------------------------
-  std::printf("%s  %-9s %12s %12s %8s %5s %8s %9s\n", tRho, "pair", l1 ? "N_L1" : "N_L0",
-              "N_pred", "chi2", "ndf",
-              "chi2/ndf", "p");
+  std::printf("%s  %-9s %12s %12s %8s %5s %8s %9s\n", tRho, "pair",
+              (std::string("N_") + mcLev).c_str(), "N_pred", "chi2", "ndf", "chi2/ndf", "p");
   std::vector<std::string> poleLines;
   std::vector<std::vector<double>> muMPair(kNPairs); // table counts per M bin, for M3
   for (int p = 0; p < kNPairs; p++) {
     std::string tag = kPairTag[p];
-    auto hCum = Cumulative<TH1D>(fin, "hM", tag, l1 ? 1 : 0);
+    auto hCum = Cumulative<TH1D>(fin, "hM", tag, mcLevel);
     TH1D* h   = hCum.get();
     const int nM = h->GetNbinsX();
     // bins 1..nM and the overflow (M > 2 GeV)
@@ -276,6 +311,21 @@ int main(int argc, char** argv) {
         mu[b] += NV * scale[i] * m[b];
         mp[b] += scale[i] * m[b];
       }
+    }
+    // L2: chain part (M bins and the overflow) and its kernel variance
+    std::vector<double> extraVar(nM + 1, 0.);
+    if (l2) {
+      TH1D* hc  = ftab->Get<TH1D>(("rho_chain_" + tag).c_str());
+      TH1D* hcv = ftab->Get<TH1D>(("rho_chain_var_" + tag).c_str());
+      TH1D* hChain = static_cast<TH1D*>(h->Clone(("rho_pred_chain_" + tag).c_str()));
+      hChain->Reset();
+      for (int b = 0; b <= nM; b++) {
+        mu[b] += NV * hc->GetBinContent(b + 1);
+        extraVar[b] = NV * NV * hcv->GetBinContent(b + 1);
+        hChain->SetBinContent(b + 1, hc->GetBinContent(b + 1));
+      }
+      fout.cd();
+      hChain->Write();
     }
     muMPair[p] = mu;
     double nTot = 0., muTot = 0.;
@@ -333,7 +383,7 @@ int main(int argc, char** argv) {
       continue;
     }
     const double varFactor = (kPairPDG[p][0] == kPairPDG[p][1]) ? 2. : 1.;
-    Chi2 c = PoissonChi2(n, mu, minExp, 0, varFactor);
+    Chi2 c = PoissonChi2(n, mu, minExp, 0, varFactor, &extraVar);
     double prob = TMath::Prob(c.chi2, c.ndf);
     bool ok = prob > 1e-3;
     allT21 = allT21 && ok;
@@ -401,14 +451,14 @@ int main(int argc, char** argv) {
   const double cthBand[2][2] = {{0.10, 0.30}, {0.50, 0.80}};
   const double minM3 = 500.; // minimum number of pairs (or predicted pairs) for an M3 curve
   std::printf("%s  %-9s %-14s %-17s %10s %10s %7s %7s %4s %8s %9s\n", tKap, "pair", "mass",
-              "M window", l1 ? "N_L1" : "N_L0", "N_pred", "N/pred", "chi2", "ndf", "chi2/ndf", "p");
+              "M window", (std::string("N_") + mcLev).c_str(), "N_pred", "N/pred", "chi2", "ndf", "chi2/ndf", "p");
   std::vector<std::string> m3Lines;
   for (int p = 0; p < kNPairs; p++) {
     std::string tag = kPairTag[p];
     const bool likeSign    = (kPairPDG[p][0] == kPairPDG[p][1]);
     const bool unlikeSign  = (kPairPDG[p][0] == -kPairPDG[p][1]);
     const double errScale  = likeSign ? std::sqrt(2.) : 1.;
-    auto h3Cum = Cumulative<TH3D>(fin, "hMKC", tag, l1 ? 1 : 0);
+    auto h3Cum = Cumulative<TH3D>(fin, "hMKC", tag, mcLevel);
     TH3D* h3   = h3Cum.get();
     const TAxis* ax = h3->GetXaxis();
     const TAxis* ay = h3->GetYaxis();
@@ -448,6 +498,17 @@ int main(int argc, char** argv) {
         if (co.pair != p) continue;
         std::vector<double> m = PredictKappa(co, M1, M2, ay);
         for (int k = 0; k < nK; k++) mu[k] += NV * scale[i] * m[k];
+      }
+      // L2: chain part in the window's M bins (same M and kappa binning as the MC)
+      std::vector<double> extraK(nK, 0.);
+      if (l2) {
+        TH2D* hc  = ftab->Get<TH2D>(("chainMK_" + tag).c_str());
+        TH2D* hcv = ftab->Get<TH2D>(("chainMK_var_" + tag).c_str());
+        for (int b = b1; b <= b2; b++)
+          for (int k = 1; k <= nK; k++) {
+            mu[k - 1] += NV * hc->GetBinContent(b, k);
+            extraK[k - 1] += NV * NV * hcv->GetBinContent(b, k);
+          }
       }
       double nTot = 0., muTot = 0.;
       for (int k = 0; k < nK; k++) {
@@ -495,15 +556,21 @@ int main(int argc, char** argv) {
         return hr;
       };
 
-      // T2.2 (unlike-sign pairs only)
-      if (unlikeSign && muTot < 500.) {
+      // T2.2 (unlike-sign pairs only); at L2 also like-sign pairs in the continuum windows, with the
+      // doublet variance 2 mu
+      const bool tested = unlikeSign || (l2 && likeSign && !tm.poleParent);
+      if (tested && muTot < 500.) {
         std::printf("%s  %-9s %-14s [%.4f,%.4f]  skipped (%.0f predicted pairs)\n", tKap,
                     tag.c_str(), label.c_str(), M1, M2, muTot);
-      } else if (unlikeSign) {
+      } else if (tested) {
         // Shape: expectations rescaled to the MC total (one constraint).
         std::vector<double> muShape(nK);
-        for (int k = 0; k < nK; k++) muShape[k] = mu[k] * nTot / muTot;
-        Chi2 c = PoissonChi2(n, muShape, minExp, 1);
+        std::vector<double> extraShape(nK);
+        for (int k = 0; k < nK; k++) {
+          muShape[k]    = mu[k] * nTot / muTot;
+          extraShape[k] = extraK[k] * (nTot / muTot) * (nTot / muTot);
+        }
+        Chi2 c = PoissonChi2(n, muShape, minExp, 1, likeSign ? 2. : 1., &extraShape);
         double prob = TMath::Prob(c.chi2, c.ndf);
         bool ok = prob > 1e-3;
         allT22 = allT22 && ok;

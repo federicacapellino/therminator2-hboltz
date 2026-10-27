@@ -1,0 +1,192 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\usepackage{caption}
+\usepackage{float}
+\captionsetup{font=small,labelfont=bf}
+
+\newcommand{\CK}{\mathcal C_K}
+\newcommand{\Cu}{\mathcal C_u}
+\newcommand{\pass}{\textcolor{green!45!black}{\textbf{PASS}}}
+\newcommand{\code}[1]{\texttt{\hyphenchar\font=`\-#1}}
+\sloppy
+\emergencystretch=2em
+
+\title{Pair functions in a hadron resonance gas at rest:\\ results of milestone M8 (chain kernels, L2 table)}
+\author{THERMINATOR 2 (hboltz fork), \code{src/work/hrg\_pair\_density\_spec.md}, Sec.~9}
+\date{27 October 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+This note reports milestone M8 of Part~II of the spec: the L2 pair-function table. It is the L1
+table of M7 plus the chain part. For each parent $c$, a kernel of cascade pairs is built from Monte
+Carlo decays at rest and convolved with the parent current $S_c$ of M6. All tests pass for both
+weak-decay settings. T8.1: the kernel pair yields per decay agree with the counting
+$\sum_{\rm ch}B\sum_{i\ne j}\bar n_{d_i\to s}\bar n_{d_j\to s'}$ (770 / 532 parent--pair terms, pull rms
+0.96 / 1.06, max $|{\rm pull}|$ 2.8 / 2.9). T8.2: $\int dM\rho^{\rm L2}=c^{\rm L2}$ for all ordered
+pairs, $|{\rm pull}|<2$. T8.3: versus the event MC at L2 ($2\times10^5$ events per setting),
+$\rho(M)$ passes for all 12 ordered pairs (min $p$ 0.21 / 0.17) and $dP/d\kappa|_M$ at all test
+masses (min $p$ 0.09 / 0.023). Like-sign pairs, which are almost entirely chain pairs, are now
+described as well as unlike-sign pairs. Reaching this required one correction affecting all levels:
+the table now uses the branching ratios that THERMINATOR's decayer actually realizes. They differ
+from the nominal ones for the four $K^*_0(1430)$, whose BRs sum to 1.004
+(Sec.~\ref{sec:br}).
+\end{abstract}
+
+\section{Implementation}
+\paragraph{Kernels} (spec Sec.~9.4). For every species $c$ that decays in the events (not weak-stable)
+and has a non-zero chain yield in the counting, $N_c$ particles of type $c$ are put in a particle list
+and decayed with \code{ParticleDecayer} until the end of the list, as in
+\code{Event::DecayParticles}. Particles that survive (BR sum $<1$) count in $N_c$. ``At rest''
+means $p_z=10^{-7}m_c$, because the decayer's boost is $0/0$ at $v=0$. Each final measured particle
+is assigned its first-generation branch by walking \code{fathereid} up to the daughter of $c$.
+Ordered pairs in different branches are counted at all-LCA level (T8.1). Those with at least one
+member not a direct daughter of $c$ are chain pairs and are filled in $(M,k_c)$, with the table's
+$M$ binning and $k_c\in[0,1.5]$~GeV in 10~MeV bins plus an overflow.
+$N_c=\min(\max(4\,N_{\rm ev}Vn_c,\,2\times10^4),\,2\times10^7)$, i.e.\ four times the number of $c$
+in the $2\times10^5$-event MC: $1.03\times10^9$ decays for 290 parents (weak on), $7.7\times10^8$
+for 214 parents (weak off). The kernel variance is propagated per cell from the per-decay-tree sums
+(clustering factor $\langle n^2\rangle/\langle n\rangle$ of pairs per tree).
+
+\paragraph{Convolution} (PFC master formula, spec Sec.~9.4). With $E_P^*=\frac{m_c}{M}\sqrt{M^2+k_c^2}$,
+$p_P^*=\frac{m_c}{M}k_c$ and $\epsilon_P(t)=(\epsilon_KE_P^*+\kappa p_P^*t)/M$, every $k_c$ bin (2-point
+Gauss) adds
+\[
+\bar\CK\mathrel{+}=\frac{1}{4\pi p^*}\frac{m_c^2}{2M^2}\,h_c\!\int_{-1}^1\!dt\,\mathcal A_c(\epsilon_P)\frac{\kappa E_P^*+\epsilon_Kp_P^*t}{M\kappa},\qquad
+\bar\CK+\bar\Cu\mathrel{+}=\frac{1}{4\pi p^*}\frac{m_c^2}{2M^2}\,h_c\!\int_{-1}^1\!dt\,(\mathcal A_c+\mathcal B_c)(\epsilon_P)\frac{\epsilon_P}{\epsilon_K}.
+\]
+When the $t$ window spans more than $T$ in $\epsilon_P$, the $t$ integrals are evaluated
+analytically from complementary primitives of the current ($\int_\epsilon^\infty\mathcal A$,
+$\int\epsilon\mathcal A$, $\int\epsilon(\mathcal A+\mathcal B)$, cubic Hermite in $\epsilon$). Narrow
+windows use 16-point Gauss--Legendre. The chain part is written on the table grid (\code{CKbar\_chain\_<pair>},
+\code{Cubar\_chain\_<pair>}). For the comparisons it is also written in the MC $(M,\kappa)$ cells,
+6-point Gauss per $\kappa$ bin (\code{chainMK[\_var]\_<pair>}), and as $\rho(M)$ per bin
+(\code{rho\_chain[\_var]\_<pair>}), which by construction equals $n_c\times$(pairs in the bin)$/N_c$. A
+\code{kernels} tree stores $N_c$ and the per-decay yields (chain, all-LCA, counting, $M$ overflow) for every
+parent.
+
+\paragraph{Code.} \code{PairFunctions.h}: \code{CountChains} (Sec.~9.5 recursion for $\bar n_{d\to s}$,
+all-LCA and one-step yields per parent), \code{GenerateKernel}, \code{CurrentPrimitives}, \code{ChainT},
+\code{ConvolveChain}, \code{EffectiveBR}. \code{ex\_pair\_functions\_table.exe --level L2} (options
+\code{--kratio}, \code{--kmin}, \code{--kmax}, \code{--mcevents}, \code{--threads}) runs the L1 table
+and then the kernel loop, and adds tests T8.0 and T8.4. \code{ex\_pair\_functions\_compare.exe --level L2
+--table <file>} adds the chain part to the L1 prediction and the kernel variance to the $\chi^2$. It
+compares with the cumulative MC level L2 and also tests like-sign $dP/d\kappa$ in the continuum
+windows (variance $2\mu$). Run time: 38~min (weak on) and 27~min (weak off) for the table, mostly kernel
+generation; about 1~min for the comparison.
+
+\section{Branching ratios above one}\label{sec:br}
+The first full-statistics run failed T8.1 with 17$\sigma$ pulls. These were confined to
+$K^*_0(1430)^\pm\to\ldots\to\pi^+\pi^-$ and to $K(1770)^0$, which decays into $K^*_0(1430)$, with yields
+0.7\% below the counting. The cause is that the BRs of the four $K^*_0(1430)$ sum to 1.004 after
+parsing (they are listed in the table's REPORT). \code{DecayTable::ChooseDecayChannelOrNot} draws
+$u\in[0,1]$ against the cumulative BRs, so the part of the last channel beyond 1 is never chosen. The
+table code now uses $B_{\rm eff}=\max\big(0,\min(1,S+B)-\min(1,S)\big)$, with $S$ the sum of the
+preceding channels (\code{EffectiveBR}), in every place a BR enters: the channel loop, the currents
+(M6), $c^{\rm 1step}$/$c^{\rm L1}$, and the chain counting. For all other parents
+$B_{\rm eff}=B$. The DB hash and the BR-sum report still use the parsed values. The M7 L1 table was
+re-run with this change and T7.1--T7.3 pass unchanged; $c^{\rm L1}_{\pi^+\pi^-}$ moves by
+$2\times10^{-5}$ relative. The earlier failing run is kept in \code{build/t2/m8/nominalBR/}.
+The M1--M7 result files on disk were not regenerated.
+
+\section{Results}
+\begin{verbatim}
+cd build/t2
+../work/ex_pair_functions_table.exe --level L2 --norm mc --weak on|off --threads 3 \
+    --output m8/pair_table_L2_weak{on,off}.root
+../work/ex_pair_functions_compare.exe --level L2 --table m8/pair_table_L2_weak{on,off}.root \
+    --mc mc_weak{on,off}.root --output m8/compare_L2_weak{on,off}.root
+\end{verbatim}
+
+\begin{table}[H]
+\centering\footnotesize
+\begin{tabular}{llll}
+\toprule
+test & quantity & result (weak on / off) & \\
+\midrule
+T8.0 & master formula with $\delta$ kernels vs L1 functions: continua / poles & $3.0\times10^{-9}$ / $2.2\times10^{-15}$ & \pass\\
+T8.0 & convolution normalization: $\sum_\kappa$ cells $= n_c\,$pairs$/N_c$ per $M$ row & $4.8\times10^{-10}$ / $5.1\times10^{-10}$ & \pass\\
+T8.1 & all-LCA yield per decay vs counting: pull mean, rms, max & 0.04, 0.96, 2.8 / 0.10, 1.06, 2.9 & \pass\\
+T8.2 & $\int dM\rho^{\rm L2}_{ss'}=c^{\rm L2}_{ss'}$, 12 ordered pairs, max $|$pull$|$ & 1.9 / 1.4 & \pass\\
+T8.3 & $\rho(M)$, MC L2 vs L2 table, $\chi^2$ per ordered pair, min $p$ & 0.21 / 0.17 & \pass\\
+T8.3 & $dP/d\kappa|_M$, 29 windows (incl.\ like-sign continua), min $p$ & 0.093 / 0.023 & \pass\\
+T8.4 & $4.2\times10^5$ cells: non-finite, $\CK+\Cu\le0$, spacelike & 0, 0, 0 & \pass\\
+\bottomrule
+\end{tabular}
+\caption{M8 tests. T8.0 and T8.4 are internal checks added to the spec's list. Kernel variance is
+included in all T8.2/T8.3 errors.}
+\end{table}
+
+\paragraph{Size of the chain part.} The counting gives $c^{\rm L2}/c^{\rm L1}=1.388$ for $\pi^+\pi^-$
+(weak off 1.338), $\approx600$ for $\pi^+\pi^+$ (280), and 1.051 for $K^+K^-$. Like-sign pairs are thus
+essentially all chain pairs, and the chain carries 28\% (25\%) of the $\pi^+\pi^-$ density and 5\% of
+$K^+K^-$. Fig.~\ref{fig:frac} shows the distribution in $M$. For $\pi^+\pi^-$ the chain share rises
+from 0.35 at threshold to above 0.9 between 0.65 and 1.45~GeV, outside the pole bins. Above 1.6~GeV
+the one-step continua dominate again. With weak decays off, the share near threshold drops to about
+0.2, because the $K^0_S\to\pi^+\pi^-$ cascades from $K^*$ are absent.
+
+\paragraph{T8.3.} The total pair counts agree to $10^{-4}$ ($\pi^+\pi^-$, weak on: 384\,620\,413 MC vs
+384\,613\,382). All pole bins have $|$pull$|\le2.0$ (largest: $f_2(1525)\to\pi^+\pi^-$, weak off, $-2.0$). The $dP/d\kappa$ shapes (Fig.~\ref{fig:dpdk}) show what L1 misses on the continua. At
+$M=0.6$~GeV the L1 table is 7\% above the MC at small $\kappa$ and 12\% (28\%) below it at 1 (1.5)~GeV;
+the L2 table follows the MC within errors. For like-sign pairs the L1 table holds only the tiny
+four-pion one-step term and does not describe the spectrum at all. The L2 table matches the MC
+(Fig.~\ref{fig:rho}, right).
+
+\paragraph{Neglected structure: $a_2$.} The table is the $\Omega^*$ average, so $a_1=a_2=0$. In the
+MC at L2 (M3 files, weak on), $a_1$ is consistent with 0 (pull mean 0.01, rms 1.00 for $\pi^+\pi^-$),
+but $a_2$ is not. Its pull mean is $-8.1$ for $\pi^+\pi^-$ continuum bins and $-3.5$ for like-sign pairs, while
+it is consistent with zero at the $\rho^0$ pole bin (Fig.~\ref{fig:a2}). In the continuum $a_2$ falls
+roughly linearly with $\kappa$, reaching $-0.15$ at $M=0.45$~GeV and $-0.21$ at 0.6~GeV for
+$\kappa\simeq1.5$~GeV. This $\epsilon_Q^2$ dependence of the chain pairs is beyond the scope of Part~II
+(spec Sec.~8). It does not affect $\rho(M)$, $dP/d\kappa$ or the sum rule.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.49\textwidth]{fig/rho_pippim_weakon.png}
+\includegraphics[width=0.49\textwidth]{fig/rho_pippip_weakon.png}
+\caption{T8.3, weak on: $d\rho/dM$ of $\pi^+\pi^-$ (left) and $\pi^+\pi^+$ (right), MC at L2 (points),
+L2 table (red), L1 table (blue, dashed); pulls with respect to the L2 table including the kernel
+variance. Also \code{fig/rho\_KpKm\_*.png}, \code{fig/rho\_*\_weakoff.png}.}
+\label{fig:rho}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{fig/dpdk_weakon.png}
+\caption{T8.3, weak on: $dP/d\kappa|_M$ divided by the Boltzmann spectrum of a particle of mass $M$: MC
+at L2, L2 table, L1 table. In the $\pi^+\pi^+$ panel the L1 curve is the normalized shape of the
+negligible one-step term. Weak off: \code{fig/dpdk\_weakoff.png}.}
+\label{fig:dpdk}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{fig/chain_fraction.png}
+\caption{Chain part / L2 table per $M$ bin. The narrow dips are the pole bins of one-step two-body
+decays.}
+\label{fig:frac}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{fig/a2_L2.png}
+\caption{MC $a_2=\langle P_2(\cos\theta^*)\rangle$ at L2, $\pi^+\pi^-$, weak on; the L2 table has
+$a_2=0$.}
+\label{fig:a2}
+\end{figure}
+
+\section{Outputs and status}
+\code{build/t2/m8/}: \code{pair\_table\_L2\_weak\{on,off\}.root} (L1 table content, the chain
+histograms and the \code{kernels} tree), \code{compare\_L2\_weak\{on,off\}.root}, and the logs (copied
+here). M8: all tests \pass. M4 (sum rule) can now use $c^{\rm L2}$ from the counting.
+\end{document}

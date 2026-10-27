@@ -10,10 +10,14 @@
 #define _TH2_PAIR_FUNCTIONS_H_
 
 #include "Crc32.h"
+#include "Particle.h"
 #include "ParticleDB.h"
+#include "ParticleDecayer.h"
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdlib>
+#include <list>
 #include <map>
 #include <sstream>
 #include <string>
@@ -304,6 +308,17 @@ inline std::vector<int> ChannelDaughters(const DecayChannel* ch) {
   return d;
 }
 
+// Branching ratio of channel c as ParticleDecayer realizes it: DecayTable::ChooseDecayChannelOrNot
+// draws u in [0,1] against the cumulative BRs, so where they sum to more than 1 (the K*(1430)s,
+// 1.004) the channels beyond 1 are cut. Equal to GetBranchingRatio() whenever the sum is <= 1.
+inline double EffectiveBR(const DecayTable* table, int c) {
+  double before = 0.;
+  for (int i = 0; i < c; i++) before += table->GetDecayChannel(i)->GetBranchingRatio();
+  double B = table->GetDecayChannel(c)->GetBranchingRatio();
+  if (before + B <= 1.) return B;
+  return std::max(0., 1. - std::min(before, 1.));
+}
+
 struct SpeciesCurrent;
 
 // One (ordered pair, parent, channel, third daughter) term of the channel loop.
@@ -359,7 +374,7 @@ inline ContributionSet BuildContributions(ParticleDB* db, double T, bool quantum
     for (int c = 0; c <= table->GetChannelCount(); c++) {
       const DecayChannel* ch = table->GetDecayChannel(c);
       std::vector<int> d = ChannelDaughters(ch);
-      double B = ch->GetBranchingRatio();
+      double B = EffectiveBR(table, c);
 
       // Counting: n_s (n_s' - delta_ss'), no slot loop.
       for (int p = 0; p < kNPairs; p++) {
@@ -523,6 +538,13 @@ inline const std::vector<double>& GLBaryWeights(int n) {
   return bw;
 }
 
+// GLRule and GLBaryWeights fill static caches on first use, which is not thread-safe: call this
+// before starting threads, so that the threads only read the caches.
+inline void WarmQuadratureCaches(int nPerPanel = 16) {
+  for (int n : {2, 6, 8, 16, 32, 64, 128, 256, nPerPanel}) GLRule(n);
+  GLBaryWeights(nPerPanel);
+}
+
 struct SpeciesCurrent {
   std::string name;
   int pdg;
@@ -665,6 +687,7 @@ inline CurrentSet BuildCurrents(ParticleDB* db, double T, bool quantum,
                                 int nPerPanel = 16, int nThreads = 8) {
   CurrentSet cs;
   cs.T = T;
+  WarmQuadratureCaches(nPerPanel);
   const int nTypes = db->GetParticleTypeCount();
   auto mass = [&](int idx) { return static_cast<double>(db->GetParticleType(idx)->GetMass()); };
 
@@ -708,7 +731,7 @@ inline CurrentSet BuildCurrents(ParticleDB* db, double T, bool quantum,
         FeedSlot fs;
         fs.parent = a;
         fs.daughter = d[i];
-        fs.B = ch->GetBranchingRatio();
+        fs.B = EffectiveBR(type->GetTable(), c);
         if (d.size() == 2) {
           fs.mX = {mass(d[1 - i])};
           fs.wX = {1.};
@@ -878,10 +901,424 @@ inline void ToL1(ContributionSet& cs, ParticleDB* db, const CurrentSet& cur) {
           ns += (db->GetParticleType(k)->GetPDGCode() == kPairPDG[p][0]);
           nsp += (db->GetParticleType(k)->GetPDGCode() == kPairPDG[p][1]);
         }
-        cs.c1step[p] += cur.cur[a].nCount * ch->GetBranchingRatio() * ns *
+        cs.c1step[p] += cur.cur[a].nCount * EffectiveBR(type->GetTable(), c) * ns *
                         (nsp - (kPairPDG[p][0] == kPairPDG[p][1] ? 1 : 0));
       }
     }
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Chain kernels and the L2 table (spec Sec. 9.4-9.5, PFC Sec. 4-5)
+
+// Measured species (index 0..5) of the ordered pairs.
+static constexpr int kNMeasured = 6;
+static constexpr int kMeasPDG[kNMeasured] = {211, -211, 321, -321, 2212, -2212};
+inline int MeasuredIndex(int pdg) {
+  for (int i = 0; i < kNMeasured; i++)
+    if (kMeasPDG[i] == pdg) return i;
+  return -1;
+}
+
+// Counting of Sec. 9.5. nbar[d][s]: mean number of final measured s per particle d (decayed with
+// the parsed BRs, surviving with 1 - sum B). Per parent c and ordered pair p, per decay:
+// allLCA = sum_ch B sum_{i!=j} nbar_{d_i -> s} nbar_{d_j -> s'} (pairs with LCA at the vertex),
+// oneStep = sum_ch B n_s (n_s' - delta) (both members direct daughters); chain = allLCA - oneStep.
+struct ChainCounting {
+  std::vector<std::array<double, kNMeasured>> nbar;
+  std::vector<std::array<double, kNPairs>> allLCA, oneStep;
+};
+
+inline ChainCounting CountChains(ParticleDB* db) {
+  const int nTypes = db->GetParticleTypeCount();
+  ChainCounting cc;
+  cc.nbar.assign(nTypes, {});
+  cc.allLCA.assign(nTypes, {});
+  cc.oneStep.assign(nTypes, {});
+  std::vector<int> order(nTypes);
+  for (int c = 0; c < nTypes; c++) order[c] = c;
+  std::stable_sort(order.begin(), order.end(), [&](int x, int y) {
+    return db->GetParticleType(x)->GetMass() < db->GetParticleType(y)->GetMass();
+  });
+  for (int d : order) {
+    ParticleType* type = db->GetParticleType(d);
+    std::array<double, kNMeasured>& nb = cc.nbar[d];
+    nb.fill(0.);
+    double surv = 1.;
+    if (DecaysInEvent(type)) {
+      for (int c = 0; c <= type->GetTable()->GetChannelCount(); c++) {
+        const DecayChannel* ch = type->GetTable()->GetDecayChannel(c);
+        double B = EffectiveBR(type->GetTable(), c);
+        surv -= B;
+        std::vector<int> dd = ChannelDaughters(ch);
+        for (int k : dd)
+          for (int s = 0; s < kNMeasured; s++) nb[s] += B * cc.nbar[k][s];
+        for (int p = 0; p < kNPairs; p++) {
+          int s1 = MeasuredIndex(kPairPDG[p][0]), s2 = MeasuredIndex(kPairPDG[p][1]);
+          int n1 = 0, n2 = 0;
+          for (size_t i = 0; i < dd.size(); i++) {
+            n1 += (db->GetParticleType(dd[i])->GetPDGCode() == kPairPDG[p][0]);
+            n2 += (db->GetParticleType(dd[i])->GetPDGCode() == kPairPDG[p][1]);
+            for (size_t j = 0; j < dd.size(); j++)
+              if (i != j) cc.allLCA[d][p] += B * cc.nbar[dd[i]][s1] * cc.nbar[dd[j]][s2];
+          }
+          cc.oneStep[d][p] += B * n1 * (n2 - (s1 == s2 ? 1 : 0));
+        }
+      }
+    }
+    int sm = MeasuredIndex(type->GetPDGCode());
+    if (sm >= 0) nb[sm] += surv;
+  }
+  return cc;
+}
+
+// Kernel of one parent c: ordered measured pairs per particle c at rest, from N decays.
+// counts[p][im * (nKc + 1) + ik]: chain pairs (different first-generation branches, not both direct
+// daughters) in M bin im of the pair's MassEdges and k_c bin ik (ik = nKc: k_c overflow); counts with
+// M above the last edge go to mOverflow[p]. sAll/s2All, sChain/s2Chain: sums over trees of the
+// per-tree number of all-LCA and chain pairs and of its square.
+struct ChainKernel {
+  int parent = -1;
+  long N = 0;
+  std::vector<double> kcEdges;
+  std::vector<std::vector<double>> mEdges; // per pair
+  std::vector<std::vector<double>> counts; // per pair
+  std::array<double, kNPairs> mOverflow{}, sAll{}, s2All{}, sChain{}, s2Chain{};
+  long nNonFinite = 0; // final measured particles with non-finite momentum (skipped)
+  int nKc() const { return static_cast<int>(kcEdges.size()) - 1; }
+};
+
+inline ChainKernel GenerateKernel(ParticleDB* db, int c, long N,
+                                  const std::vector<std::vector<double>>& mEdges,
+                                  const std::vector<double>& kcEdges, long batch = 10000) {
+  ChainKernel kern;
+  kern.parent = c;
+  kern.N = N;
+  kern.kcEdges = kcEdges;
+  kern.mEdges = mEdges;
+  const int nKc = kern.nKc();
+  for (int p = 0; p < kNPairs; p++)
+    kern.counts.emplace_back((mEdges[p].size() - 1) * (nKc + 1), 0.);
+  ParticleType* type = db->GetParticleType(c);
+  const double m = type->GetMass();
+
+  struct Final {
+    int s;          // measured index
+    int branch;     // eid of the first-generation daughter it descends from
+    bool direct;    // direct daughter of c
+    double e, px, py, pz;
+  };
+  std::vector<const Particle*> byEid;
+  std::vector<std::vector<Final>> trees;
+  for (long done = 0; done < N; done += batch) {
+    const long nb = std::min(batch, N - done);
+    Particle::ZeroEID();
+    std::list<Particle> particles;
+    // "At rest" with a tiny momentum: ParticleDecayer's boost has (gamma - 1)/v^2 = 0/0 at v = 0.
+    // The shift of k_c is below 1e-7 GeV.
+    const double pz = 1e-7 * m;
+    for (long i = 0; i < nb; i++) {
+      Particle part(type);
+      part.SetParticlePX(std::hypot(m, pz), 0., 0., pz, 0., 0., 0., 0.);
+      particles.push_back(part);
+    }
+    // As Event::DecayParticles: the end of the list moves while daughters are appended.
+    ParticleDecayer decayer(db, &particles);
+    for (auto it = particles.begin(); it != particles.end(); ++it)
+      if (DecaysInEvent(it->GetParticleType())) decayer.DecayParticle(&(*it));
+
+    int maxEid = 0;
+    for (const Particle& q : particles) maxEid = std::max(maxEid, q.eid);
+    byEid.assign(maxEid + 1, nullptr);
+    for (const Particle& q : particles) byEid[q.eid] = &q;
+    trees.assign(nb, {});
+    for (const Particle& q : particles) {
+      if (q.GetDecayed() || q.fathereid == -1) continue;
+      int s = MeasuredIndex(q.pid);
+      if (s < 0) continue;
+      if (!std::isfinite(q.e) || !std::isfinite(q.px) || !std::isfinite(q.py) ||
+          !std::isfinite(q.pz)) {
+        ++kern.nNonFinite;
+        continue;
+      }
+      const Particle* a = &q;
+      while (a->fathereid != a->rooteid) a = byEid[a->fathereid];
+      // roots are the first nb particles created after ZeroEID: rooteid in 0..nb-1
+      trees[q.rooteid].push_back({s, a->eid, q.fathereid == q.rooteid, q.e, q.px, q.py, q.pz});
+    }
+    for (const std::vector<Final>& t : trees) {
+      std::array<double, kNPairs> nAll{}, nChain{};
+      for (const Final& f1 : t) {
+        for (const Final& f2 : t) {
+          if (&f1 == &f2 || f1.branch == f2.branch) continue;
+          int p = PairIndex(kMeasPDG[f1.s], kMeasPDG[f2.s]);
+          if (p < 0) continue;
+          nAll[p] += 1.;
+          if (f1.direct && f2.direct) continue;
+          nChain[p] += 1.;
+          double E = f1.e + f2.e, px = f1.px + f2.px, py = f1.py + f2.py, pz = f1.pz + f2.pz;
+          double kc = std::sqrt(px * px + py * py + pz * pz);
+          double M  = std::sqrt(std::max(E * E - kc * kc, 0.));
+          const std::vector<double>& me = mEdges[p];
+          if (M >= me.back()) {
+            kern.mOverflow[p] += 1.;
+            continue;
+          }
+          int im = std::upper_bound(me.begin(), me.end(), M) - me.begin() - 1;
+          if (im < 0) im = 0; // rounding at threshold
+          int ik = std::upper_bound(kcEdges.begin(), kcEdges.end(), kc) - kcEdges.begin() - 1;
+          if (ik >= nKc) ik = nKc;
+          kern.counts[p][im * (nKc + 1) + ik] += 1.;
+        }
+      }
+      for (int p = 0; p < kNPairs; p++) {
+        kern.sAll[p] += nAll[p];
+        kern.s2All[p] += nAll[p] * nAll[p];
+        kern.sChain[p] += nChain[p];
+        kern.s2Chain[p] += nChain[p] * nChain[p];
+      }
+    }
+  }
+  return kern;
+}
+
+// Complementary primitives of the current of one parent in the fluid-frame energy, integrated from
+// e to infinity: G0 = int A, G1 = int e A, F1 = int e (A+B), on a uniform grid from m to E_max (the
+// current is cut there), evaluated by cubic Hermite interpolation with the exact derivatives
+// -A, -e A, -e (A+B). Integrating from above keeps differences deep in the thermal tail accurate.
+struct CurrentPrimitives {
+  double e0 = 0., h = 0.;
+  std::vector<double> A, AB, G0, G1, F1;
+
+  void Build(const SpeciesCurrent& c, double T, double step = 0.025) {
+    e0 = c.m;
+    h  = step * T;
+    const int n = static_cast<int>((c.Emax() - e0) / h) + 2;
+    A.resize(n); AB.resize(n); G0.assign(n, 0.); G1.assign(n, 0.); F1.assign(n, 0.);
+    for (int i = 0; i < n; i++) c.AtEnergy(e0 + i * h, A[i], AB[i]);
+    const GaussLegendre& gl = GLRule(6);
+    for (int i = 0; i + 1 < n; i++) {
+      double g0 = 0., g1 = 0., f1 = 0.;
+      for (int q = 0; q < 6; q++) {
+        double e = e0 + (i + 0.5 * (1. + gl.x[q])) * h, a, ab;
+        c.AtEnergy(e, a, ab);
+        g0 += 0.5 * h * gl.w[q] * a;
+        g1 += 0.5 * h * gl.w[q] * e * a;
+        f1 += 0.5 * h * gl.w[q] * e * ab;
+      }
+      G0[i] = g0;
+      G1[i] = g1;
+      F1[i] = f1;
+    }
+    for (int i = n - 2; i >= 0; i--) { // accumulate from above
+      G0[i] += G0[i + 1];
+      G1[i] += G1[i + 1];
+      F1[i] += F1[i + 1];
+    }
+  }
+  void Eval(double e, double& g0, double& g1, double& f1) const {
+    const int n = A.size();
+    double x = (e - e0) / h;
+    if (x <= 0.) { g0 = G0[0]; g1 = G1[0]; f1 = F1[0]; return; }
+    if (x >= n - 1) { g0 = g1 = f1 = 0.; return; }
+    int i = static_cast<int>(x);
+    double t = x - i, t2 = t * t, t3 = t2 * t;
+    double h00 = 2 * t3 - 3 * t2 + 1, h10 = t3 - 2 * t2 + t, h01 = -2 * t3 + 3 * t2,
+           h11 = t3 - t2;
+    double ea = e0 + i * h, eb = ea + h;
+    g0 = h00 * G0[i] + h01 * G0[i + 1] - h * (h10 * A[i] + h11 * A[i + 1]);
+    g1 = h00 * G1[i] + h01 * G1[i + 1] - h * (h10 * ea * A[i] + h11 * eb * A[i + 1]);
+    f1 = h00 * F1[i] + h01 * F1[i + 1] - h * (h10 * ea * AB[i] + h11 * eb * AB[i + 1]);
+  }
+};
+
+// t integrals of the master formula at pair mass M, kappa, for parent energy/momentum EP, pP in the
+// pair rest frame: IA = int dt A(eps_P)(kappa EP + eps_K pP t)/(M kappa),
+// IAB = int dt (A+B)(eps_P) eps_P/eps_K, eps_P = (eps_K EP + kappa pP t)/M. Wide windows use the
+// primitives (eps = linear in t), narrow ones 16-pt Gauss-Legendre in t.
+inline void ChainT(double M, double kappa, double EP, double pP, const SpeciesCurrent& c,
+                   const CurrentPrimitives& prim, double T, double& IA, double& IAB) {
+  const double eK = std::hypot(M, kappa);
+  const double w  = 2. * kappa * pP / M;
+  if (w > T) {
+    double em = (eK * EP - kappa * pP) / M, ep = (eK * EP + kappa * pP) / M;
+    double a0, a1, af, b0, b1, bf;
+    prim.Eval(em, a0, a1, af);
+    prim.Eval(ep, b0, b1, bf);
+    // complementary primitives: int_{em}^{ep} = G(em) - G(ep)
+    IA  = M / (kappa * kappa * kappa * pP) * (eK * (a1 - b1) - M * EP * (a0 - b0));
+    IAB = M / (kappa * pP * eK) * (af - bf);
+    return;
+  }
+  const GaussLegendre& gl = GLRule(16);
+  IA = IAB = 0.;
+  for (int i = 0; i < 16; i++) {
+    double t = gl.x[i], eP = (eK * EP + kappa * pP * t) / M, a, ab;
+    c.AtEnergy(eP, a, ab);
+    IA += gl.w[i] * a * (kappa * EP + eK * pP * t) / (M * kappa);
+    IAB += gl.w[i] * ab * eP / eK;
+  }
+}
+
+// Chain contribution of all parents, per ordered pair, accumulated by ConvolveChain:
+// CK, CKCu: C_K and C_K + C_u at the table (M bin centre, kappa centre) points, row-major in M;
+// rho, rhoVar: density per M bin (index nM = above the last edge) from rho = n_c int dk_c h_c;
+// mk, mkVar: density in (M bin, MC kappa bin) cells.
+struct ChainTable {
+  std::vector<double> kTable, kMCEdges;
+  std::vector<std::vector<double>> mEdges;
+  std::array<std::vector<double>, kNPairs> CK, CKCu, rho, rhoVar, mk, mkVar;
+  double worstNorm = 0.; // max |sum_kappa mk / (n_c counts/N) - 1| over parents and M rows
+                         // (kappa integrated to 15 GeV for this check)
+  std::string worstNormName;
+
+  void Init(const std::vector<std::vector<double>>& me, const std::vector<double>& kt,
+            const std::vector<double>& kmc) {
+    mEdges = me; kTable = kt; kMCEdges = kmc;
+    for (int p = 0; p < kNPairs; p++) {
+      const size_t nM = me[p].size() - 1;
+      CK[p].assign(nM * kt.size(), 0.);
+      CKCu[p].assign(nM * kt.size(), 0.);
+      rho[p].assign(nM + 1, 0.);
+      rhoVar[p].assign(nM + 1, 0.);
+      mk[p].assign(nM * (kmc.size() - 1), 0.);
+      mkVar[p].assign(nM * (kmc.size() - 1), 0.);
+    }
+  }
+};
+
+// Master formula (PFC Sec. 4) for one parent: the current carries n_c, the kernel the pairs per c.
+// The t integrals are shared by the pairs of one species (same M bins); rows are split over threads.
+inline void ConvolveChain(const ChainKernel& kern, const SpeciesCurrent& cur, double T,
+                          const std::vector<std::pair<double, double>>& pairMasses,
+                          ChainTable& out, int nThreads = 8) {
+  WarmQuadratureCaches(cur.nPerPanel);
+  CurrentPrimitives prim;
+  prim.Build(cur, T);
+  const double mc = cur.m, nc = cur.nCount;
+  const int nKc = kern.nKc();
+  const int nKt = out.kTable.size(), nKm = out.kMCEdges.size() - 1;
+  const GaussLegendre& gk = GLRule(2);
+  const GaussLegendre& gm = GLRule(6);
+  // MC kappa quadrature nodes and weights (dkappa), per MC bin
+  std::vector<double> mcK, mcW;
+  for (int b = 0; b < nKm; b++) {
+    double h = 0.5 * (out.kMCEdges[b + 1] - out.kMCEdges[b]),
+           c = 0.5 * (out.kMCEdges[b + 1] + out.kMCEdges[b]);
+    for (int q = 0; q < 6; q++) {
+      mcK.push_back(c + h * gm.x[q]);
+      mcW.push_back(h * gm.w[q]);
+    }
+  }
+  // kappa beyond the MC range, for the normalization check only
+  std::vector<double> tailK, tailW;
+  {
+    const GaussLegendre& gt = GLRule(16);
+    double lo = out.kMCEdges.back(), hi = 15.;
+    for (int q = 0; q < 16; q++) {
+      tailK.push_back(0.5 * (lo + hi) + 0.5 * (hi - lo) * gt.x[q]);
+      tailW.push_back(0.5 * (hi - lo) * gt.w[q]);
+    }
+  }
+  std::string worstName;
+  double worst = 0.;
+  for (int fam = 0; fam < 3; fam++) {
+    std::vector<int> pairs;
+    for (int p = 4 * fam; p < 4 * fam + 4; p++)
+      if (kern.sChain[p] > 0.) pairs.push_back(p);
+    if (pairs.empty()) continue;
+    const std::vector<double>& me = kern.mEdges[pairs[0]];
+    const int nM = me.size() - 1;
+    const double m1 = pairMasses[pairs[0]].first, m2 = pairMasses[pairs[0]].second;
+    std::vector<double> rowWorst(nM, 0.);
+    auto work = [&](int t0) {
+      std::vector<double> IAt(nKt), IABt(nKt), IABm(mcK.size());
+      for (int im = t0; im < nM; im += nThreads) {
+        const double M = 0.5 * (me[im] + me[im + 1]), dM = me[im + 1] - me[im];
+        const double ps = PStar(M, m1, m2);
+        if (ps <= 0.) continue;
+        double rowCounts = 0., rowMk = 0., rowTail = 0.;
+        for (int ik = 0; ik < nKc; ik++) {
+          bool any = false;
+          for (int p : pairs) any = any || kern.counts[p][im * (nKc + 1) + ik] > 0.;
+          if (!any) continue;
+          // per-count weights of this k_c bin in the table points and MC cells
+          std::vector<double> wCK(nKt, 0.), wCKCu(nKt, 0.), wMk(nKm, 0.);
+          double wTail = 0.;
+          for (int g = 0; g < 2; g++) {
+            double k1 = kern.kcEdges[ik], k2 = kern.kcEdges[ik + 1];
+            double kc = 0.5 * (k1 + k2) + 0.5 * (k2 - k1) * gk.x[g];
+            double EP = mc / M * std::hypot(M, kc), pP = mc / M * kc;
+            double pref = 1. / (4. * M_PI * ps) * mc * mc / (2. * M * M) * 0.5 * gk.w[g] /
+                          (kern.N * dM);
+            for (int ik2 = 0; ik2 < nKt; ik2++) {
+              double IA, IAB;
+              ChainT(M, out.kTable[ik2], EP, pP, cur, prim, T, IA, IAB);
+              wCK[ik2] += pref * IA;
+              wCKCu[ik2] += pref * IAB;
+            }
+            for (size_t q = 0; q < mcK.size(); q++) {
+              double IA, IAB;
+              ChainT(M, mcK[q], EP, pP, cur, prim, T, IA, IAB);
+              wMk[q / 6] += dM * 16. * M_PI * M_PI * ps * mcW[q] * mcK[q] * mcK[q] * pref * IAB;
+            }
+            for (size_t q = 0; q < tailK.size(); q++) {
+              double IA, IAB;
+              ChainT(M, tailK[q], EP, pP, cur, prim, T, IA, IAB);
+              wTail += dM * 16. * M_PI * M_PI * ps * tailW[q] * tailK[q] * tailK[q] * pref * IAB;
+            }
+          }
+          for (int p : pairs) {
+            double cnt = kern.counts[p][im * (nKc + 1) + ik];
+            if (cnt <= 0.) continue;
+            double infl = kern.s2Chain[p] / kern.sChain[p];
+            for (int ik2 = 0; ik2 < nKt; ik2++) {
+              out.CK[p][im * nKt + ik2] += wCK[ik2] * cnt;
+              out.CKCu[p][im * nKt + ik2] += wCKCu[ik2] * cnt;
+            }
+            for (int b = 0; b < nKm; b++) {
+              out.mk[p][im * nKm + b] += wMk[b] * cnt;
+              out.mkVar[p][im * nKm + b] += wMk[b] * wMk[b] * cnt * infl;
+            }
+            if (p == pairs[0]) {
+              rowCounts += cnt;
+              rowTail += wTail * cnt;
+              for (int b = 0; b < nKm; b++) rowMk += wMk[b] * cnt;
+            }
+          }
+        }
+        // normalization: sum over kappa of the cells (plus the kappa > 3 GeV tail, which the cells
+        // do not hold) = n_c (pairs in the row) / N
+        if (rowCounts > 0.)
+          rowWorst[im] = std::abs((rowMk + rowTail) / (nc * rowCounts / kern.N) - 1.);
+      }
+    };
+    std::vector<std::thread> pool;
+    for (int t = 0; t < nThreads; t++) pool.emplace_back(work, t);
+    for (auto& th : pool) th.join();
+    for (int im = 0; im < nM; im++)
+      if (rowWorst[im] > worst) {
+        worst = rowWorst[im];
+        char buf[64];
+        std::snprintf(buf, sizeof(buf), "M = %.4f", 0.5 * (me[im] + me[im + 1]));
+        worstName = buf;
+      }
+    // rho per M bin from the normalization identity (k_c overflow included)
+    for (int p : pairs) {
+      double infl = kern.s2Chain[p] / kern.sChain[p];
+      for (int im = 0; im < nM; im++) {
+        double cnt = 0.;
+        for (int ik = 0; ik <= nKc; ik++) cnt += kern.counts[p][im * (nKc + 1) + ik];
+        out.rho[p][im] += nc * cnt / kern.N;
+        out.rhoVar[p][im] += (nc / kern.N) * (nc / kern.N) * cnt * infl;
+      }
+      out.rho[p][nM] += nc * kern.mOverflow[p] / kern.N;
+      out.rhoVar[p][nM] += (nc / kern.N) * (nc / kern.N) * kern.mOverflow[p] * infl;
+    }
+  }
+  if (worst > out.worstNorm) {
+    out.worstNorm = worst;
+    out.worstNormName = cur.name + ", " + worstName;
   }
 }
 

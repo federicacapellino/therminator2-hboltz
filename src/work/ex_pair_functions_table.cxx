@@ -6,11 +6,16 @@
 // With --level L1 (spec Sec. 9.3, milestone M7) the thermal parent distribution is replaced by the
 // full single-particle current of the parent (BuildCurrents, M6) and the tests are T7.1-T7.3;
 // --norm mc normalizes the thermal densities to the Integrator multiplicities (as the MC).
+// With --level L2 (spec Sec. 9.4, milestone M8) the L1 table is complemented by the chain part:
+// per parent, a kernel of cascade pairs from Monte Carlo decays at rest, convolved with the parent
+// current (PFC master formula); tests T8.0-T8.2 and T8.4.
 //
 // Usage:
-//   ex_pair_functions_table.exe [--level L0|L1] [--weak on|off] [--stat qs|boltzmann]
+//   ex_pair_functions_table.exe [--level L0|L1|L2] [--weak on|off] [--stat qs|boltzmann]
 //                               [--norm quad|mc] [--share <dir>] [--output <file>]
 //                               [--samples <N>] [--varsamples <N>] [--seed <N>]
+//                               [--kratio <x>] [--kmin <N>] [--kmax <N>] [--mcevents <N>]
+//                               [--threads <N>]
 
 #include "CLI11.hpp"
 #include "Integrator.h"
@@ -28,6 +33,7 @@
 #include <TRandom.h>
 #include <TTree.h>
 #include <TVectorD.h>
+#include <array>
 #include <chrono>
 #include <cstdio>
 #include <filesystem>
@@ -50,6 +56,11 @@ int main(int argc, char** argv) {
   int nSamples    = 1000000;
   int nVarSamples = 200000;
   int seed        = 0;
+  double kRatio   = 4.;
+  double kMin     = 2e4;
+  double kMax     = 2e7;
+  double mcEvents = 2e5;
+  int nThreads    = 8;
 
   CLI::App app{"ex_pair_functions_table: pair functions C_K, C_u of a resonance gas at rest"};
   app.add_option("--share",      shareDir,    "path to SHARE particle database");
@@ -60,9 +71,16 @@ int main(int argc, char** argv) {
   app.add_option("--stat",       stat,        "parent statistics: qs (default) or boltzmann")
       ->default_str("qs")
       ->check(CLI::IsMember({"qs", "boltzmann"}));
-  app.add_option("--level",      level,       "parent distribution: L0 (thermal) or L1 (current)")
+  app.add_option("--level",      level,       "L0 (thermal parents), L1 (currents), L2 (+ chains)")
       ->default_str("L0")
-      ->check(CLI::IsMember({"L0", "L1"}));
+      ->check(CLI::IsMember({"L0", "L1", "L2"}));
+  app.add_option("--kratio",     kRatio,      "L2: kernel decays per parent / parents in the MC")
+      ->default_val(4.);
+  app.add_option("--kmin",       kMin,        "L2: minimum kernel decays per parent")->default_val(2e4);
+  app.add_option("--kmax",       kMax,        "L2: maximum kernel decays per parent")->default_val(2e7);
+  app.add_option("--mcevents",   mcEvents,    "L2: events of the MC the table is compared with")
+      ->default_val(2e5);
+  app.add_option("--threads",    nThreads,    "L2: threads for the convolution")->default_val(8);
   app.add_option("--norm",       norm,        "L1 thermal densities: quad (default) or mc")
       ->default_str("quad")
       ->check(CLI::IsMember({"quad", "mc"}));
@@ -75,7 +93,8 @@ int main(int argc, char** argv) {
 
   const bool weakOn  = (weak == "on");
   const bool quantum = (stat == "qs");
-  const bool l1      = (level == "L1");
+  const bool l2      = (level == "L2");
+  const bool l1      = (level == "L1") || l2; // L2 = L1 table + chain part
   auto tStart = std::chrono::steady_clock::now();
 
   {
@@ -152,6 +171,7 @@ int main(int argc, char** argv) {
 
   long nCells = 0, nNegCK = 0, nNegCu = 0, nNegSum = 0, nNonFinite = 0, nSpacelike = 0;
   double gridIntegral[kNPairs] = {0.};
+  std::array<std::vector<double>, kNPairs> contCK, contCu; // L1 continuum on the grid (T8.4)
   for (int p = 0; p < kNPairs; p++) {
     std::string tag = kPairTag[p];
     double m1 = 0., m2 = 0.;
@@ -161,6 +181,8 @@ int main(int argc, char** argv) {
     }
     std::vector<double> mEdges = MassEdges(m1 + m2);
     const int nM = mEdges.size() - 1;
+    contCK[p].assign(nM * nK, 0.);
+    contCu[p].assign(nM * nK, 0.);
 
     fout.cd();
     TH2D* hCK = new TH2D(("CK_cont_" + tag).c_str(),
@@ -236,6 +258,8 @@ int main(int argc, char** argv) {
           hCuch->SetBinContent(im, ik, cc.Cu);
           hCK->AddBinContent(hCK->GetBin(im, ik), cc.CK);
           hCu->AddBinContent(hCu->GetBin(im, ik), cc.Cu);
+          contCK[p][(im - 1) * nK + ik - 1] += cc.CK;
+          contCu[p][(im - 1) * nK + ik - 1] += cc.Cu;
           sumK += kap * kap * (cc.CK + cc.Cu) * (kEdges[ik] - kEdges[ik - 1]);
         }
         gridIntegral[p] += 16. * M_PI * M_PI * PStar(M, co.m1, co.m2) * sumK *
@@ -303,7 +327,7 @@ int main(int argc, char** argv) {
           if (!ch->Is3Particle()) continue;
           ++nChan;
           std::vector<int> d = ChannelDaughters(ch);
-          double B = ch->GetBranchingRatio(), ma = mass(a);
+          double B = EffectiveBR(type->GetTable(), c), ma = mass(a);
           for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
               if (i == j) continue;
@@ -346,7 +370,7 @@ int main(int argc, char** argv) {
           const DecayChannel* ch = type->GetTable()->GetDecayChannel(c);
           if (ch->Is3Particle()) continue;
           ++nChan;
-          double B = ch->GetBranchingRatio(), ma = mass(a);
+          double B = EffectiveBR(type->GetTable(), c), ma = mass(a);
           double m1 = mass(ch->GetParticle1()), m2 = mass(ch->GetParticle2());
           double A  = PoleA(ma, m1, m2, B, pstat[a].g);
           double r  = RelDiff(PoleRhoIntegral(ma, m1, m2, A, pstat[a]), B * nquad[a]);
@@ -481,7 +505,7 @@ int main(int argc, char** argv) {
       }
     }
 
-  } else {
+  } else if (!l2) {
     // ---- T7.1: thermal-only currents reproduce the M1 table ----------------------------------
     {
       double worstC = 0., worstP = 0.;
@@ -642,6 +666,243 @@ int main(int argc, char** argv) {
                   nFinite, nSmall, worst, worstName.c_str(),
                   PassFail(nFinite == nSmall && worst < 1e-4));
     }
+  }
+
+  if (l2) {
+    // ---- L2: chain kernels and convolution (spec Sec. 9.4) -------------------------------------
+    const ChainCounting cnt = CountChains(db);
+    std::vector<std::vector<double>> mEdgesP(kNPairs);
+    std::vector<std::pair<double, double>> pairMasses(kNPairs);
+    for (int p = 0; p < kNPairs; p++) {
+      pairMasses[p] = PairMasses(db, p);
+      mEdgesP[p] = MassEdges(pairMasses[p].first + pairMasses[p].second);
+    }
+    std::vector<double> kcEdges;
+    for (int i = 0; i <= 150; i++) kcEdges.push_back(0.01 * i); // k_c: 0 - 1.5 GeV
+    std::vector<double> kTable(kappaCenters.GetMatrixArray(), kappaCenters.GetMatrixArray() + nK);
+    ChainTable chain;
+    chain.Init(mEdgesP, kTable, MCKappaEdges());
+
+    fout.cd();
+    TTree* tk = new TTree("kernels", "chain kernels per parent");
+    char kName[64];
+    long kN;
+    double kNmc, kSec, kChain[kNPairs], kAll[kNPairs], kAllExp[kNPairs], kOver[kNPairs];
+    tk->Branch("parent", kName, "parent/C");
+    tk->Branch("N", &kN, "N/L");
+    tk->Branch("Nmc", &kNmc, "Nmc/D");
+    tk->Branch("seconds", &kSec, "seconds/D");
+    tk->Branch("chain", kChain, Form("chain[%d]/D", kNPairs));
+    tk->Branch("all", kAll, Form("all[%d]/D", kNPairs));
+    tk->Branch("allExpected", kAllExp, Form("allExpected[%d]/D", kNPairs));
+    tk->Branch("overflow", kOver, Form("overflow[%d]/D", kNPairs));
+
+    std::vector<double> pulls81;
+    double worst81 = 0.;
+    std::string worst81Name;
+    double chainSum[kNPairs] = {0.}, chainVar[kNPairs] = {0.};
+    long totalDecays = 0;
+    int nParents = 0;
+    auto tChain = std::chrono::steady_clock::now();
+    for (int c : curs.order) {
+      ParticleType* type = db->GetParticleType(c);
+      if (!DecaysInEvent(type)) continue;
+      double exp = 0.;
+      for (int p = 0; p < kNPairs; p++) exp += cnt.allLCA[c][p] - cnt.oneStep[c][p];
+      if (exp < 1e-12) continue;
+      const SpeciesCurrent& sc = curs.cur[c];
+      double nmc = mcEvents * V * sc.nCount;
+      long N = static_cast<long>(std::min(std::max(kRatio * nmc, kMin), kMax));
+      auto t0 = std::chrono::steady_clock::now();
+      ChainKernel kern = GenerateKernel(db, c, N, mEdgesP, kcEdges);
+      ConvolveChain(kern, sc, T, pairMasses, chain, nThreads);
+      kSec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+      ++nParents;
+      totalDecays += N;
+      for (int p = 0; p < kNPairs; p++) {
+        double mAll = kern.sAll[p] / N, mCh = kern.sChain[p] / N;
+        double vAll = std::max(kern.s2All[p] / N - mAll * mAll, 0.) / N;
+        double vCh  = std::max(kern.s2Chain[p] / N - mCh * mCh, 0.) / N;
+        chainSum[p] += sc.nCount * mCh;
+        chainVar[p] += sc.nCount * sc.nCount * vCh;
+        kChain[p] = mCh; kAll[p] = mAll; kAllExp[p] = cnt.allLCA[c][p];
+        kOver[p] = kern.mOverflow[p] / N;
+        if (cnt.allLCA[c][p] <= 0.) continue;
+        double sig  = std::sqrt(vAll);
+        double pull = (sig > 0.) ? (mAll - cnt.allLCA[c][p]) / sig : 0.;
+        pulls81.push_back(pull);
+        if (std::abs(pull) > std::abs(worst81)) {
+          worst81 = pull;
+          char buf[200];
+          std::snprintf(buf, sizeof(buf), "%s %s: %.6e vs %.6e", sc.name.c_str(), kPairTag[p],
+                        mAll, cnt.allLCA[c][p]);
+          worst81Name = buf;
+        }
+      }
+      std::snprintf(kName, sizeof(kName), "%s", sc.name.c_str());
+      kN = N;
+      kNmc = nmc;
+      tk->Fill();
+      std::printf("KERNEL %-10s N %9ld (%.2f x MC) chain pairs/decay: pi+pi- %.4e pi+pi+ %.4e "
+                  "K+K- %.4e  [%.1f s]%s\n",
+                  sc.name.c_str(), N, N / nmc, kChain[1], kChain[0], kChain[5], kSec,
+                  kern.nNonFinite ? Form("  (%ld non-finite final particles skipped)",
+                                         kern.nNonFinite)
+                                  : "");
+    }
+    std::printf("Chain kernels: %d parents, %ld decays in total, %.1f s\n", nParents, totalDecays,
+                std::chrono::duration<double>(std::chrono::steady_clock::now() - tChain).count());
+
+    // ---- T8.0: master formula with delta kernels reproduces the L1 functions -------------------
+    {
+      double worstC = 0., worstP = 0.;
+      std::string nameC, nameP;
+      std::map<int, CurrentPrimitives> prims;
+      for (const Contribution& co : contribs) {
+        if (!prims.count(co.parent)) prims[co.parent].Build(*co.cur, T);
+        const CurrentPrimitives& prim = prims[co.parent];
+        const double mc = co.ma;
+        if (co.third < 0) {
+          // pole: h = count B delta(M - m_c) delta(k_c)
+          double ps = PStar(mc, co.m1, co.m2);
+          for (double kap : {0.01, 0.3, 1.5}) {
+            double IA, IAB;
+            ChainT(mc, kap, mc, 0., *co.cur, prim, T, IA, IAB);
+            double ck = 1. / (4. * M_PI * ps) * 0.5 * co.count * co.B * IA;
+            double cku = 1. / (4. * M_PI * ps) * 0.5 * co.count * co.B * IAB;
+            double a, ab;
+            co.cur->AtEnergy(std::hypot(mc, kap), a, ab);
+            double r = std::max(RelDiff(ck, co.A / mc * a), RelDiff(cku, co.A / mc * ab));
+            if (r > worstP) { worstP = r; nameP = co.name; }
+          }
+          continue;
+        }
+        // three-body: h = count B M Phi2(M; m1, m2) Phi2(m_c; M, m3)/Phi3 delta(k_c - p3)
+        double lo = co.m1 + co.m2, hi = co.ma - co.m3;
+        for (int q = 0; q < 3; q++) {
+          double M  = lo + (hi - lo) * (q + 0.5) / 3.;
+          double ps = PStar(M, co.m1, co.m2), kc = PStar(mc, M, co.m3);
+          double h  = co.count * co.B * M * Phi2(M, co.m1, co.m2) * Phi2(mc, M, co.m3) / co.phi3;
+          double EP = mc / M * std::hypot(M, kc), pP = mc / M * kc;
+          for (double kap : {0.01, 0.3, 1.5}) {
+            double IA, IAB;
+            ChainT(M, kap, EP, pP, *co.cur, prim, T, IA, IAB);
+            double pref = 1. / (4. * M_PI * ps) * mc * mc / (2. * M * M) * h;
+            CPair ref = CKCu3Current(M, kap, co.ma, co.m3, co.D, *co.cur, 256);
+            double scale = std::max(std::abs(ref.CK), ref.CK + ref.Cu);
+            double r = std::max(std::abs(pref * IA - ref.CK), std::abs(pref * IAB - ref.CK - ref.Cu)) /
+                       scale;
+            if (r > worstC) {
+              worstC = r;
+              char buf[200];
+              std::snprintf(buf, sizeof(buf), "%s, M = %.4f, kappa = %.2f", co.name.c_str(), M, kap);
+              nameC = buf;
+            }
+          }
+        }
+      }
+      std::printf("T8.0  master formula with delta kernels vs L1 functions: continua worst rel. diff "
+                  "%.2e (%s), poles %.2e (%s)  %s\n",
+                  worstC, nameC.c_str(), worstP, nameP.c_str(),
+                  PassFail(worstC < 1e-6 && worstP < 1e-6));
+      std::printf("T8.0  convolution normalization, sum_kappa rho cells = n_c pairs/N per M row: "
+                  "worst rel. diff %.2e (%s)  %s\n",
+                  chain.worstNorm, chain.worstNormName.c_str(), PassFail(chain.worstNorm < 1e-6));
+    }
+
+    // ---- T8.1: all-LCA pairs per decay vs counting -----------------------------------------------
+    {
+      double sum = 0., sum2 = 0.;
+      for (double x : pulls81) { sum += x; sum2 += x * x; }
+      double n = pulls81.size(), mean = sum / n, rms = std::sqrt(sum2 / n);
+      std::printf("T8.1  all-LCA pairs per decay vs sum_ch B sum_{i!=j} nbar nbar, %.0f (parent, "
+                  "pair) terms: pull mean %.3f, rms %.3f, max |pull| %.2f (%s)  %s\n",
+                  n, mean, rms, std::abs(worst81), worst81Name.c_str(),
+                  PassFail(std::abs(worst81) < 5. && rms > 0.7 && rms < 1.3));
+    }
+
+    // ---- T8.2: int dM rho^L2 = c^L2 --------------------------------------------------------------
+    {
+      bool ok = true;
+      std::printf("T8.2  %-9s %16s %16s %16s %16s %8s %8s\n", "pair", "c^L1", "chain", "c^L2",
+                  "L1+chain", "pull", "L2/L1");
+      for (int p = 0; p < kNPairs; p++) {
+        double cL2 = 0.;
+        for (int c = 0; c < db->GetParticleTypeCount(); c++)
+          cL2 += curs.cur[c].nCount * cnt.allLCA[c][p];
+        double lhs = c1step[p] + chainSum[p], sig = std::sqrt(chainVar[p]);
+        double pull = sig > 0. ? (lhs - cL2) / sig : (std::abs(lhs - cL2) <= 1e-12 * cL2 ? 0. : 99.);
+        ok = ok && std::abs(pull) < 4.;
+        std::printf("T8.2  %-9s %16.9e %16.9e %16.9e %16.9e %+8.2f %8.3f\n", kPairTag[p], c1step[p],
+                    chainSum[p], cL2, lhs, pull, c1step[p] > 0. ? cL2 / c1step[p] : 0.);
+      }
+      std::printf("T8.2  int dM rho^L2 = c^L2 within the kernel statistics  %s\n", PassFail(ok));
+    }
+
+    // ---- T8.4: L2 table positive and timelike on the grid ----------------------------------------
+    {
+      long n = 0, nNeg = 0, nSpace = 0, nBad = 0;
+      for (int p = 0; p < kNPairs; p++) {
+        const int nM = mEdgesP[p].size() - 1;
+        for (int im = 0; im < nM; im++) {
+          double M = 0.5 * (mEdgesP[p][im] + mEdgesP[p][im + 1]);
+          for (int ik = 0; ik < nK; ik++) {
+            double ck  = contCK[p][im * nK + ik] + chain.CK[p][im * nK + ik];
+            double sum = contCK[p][im * nK + ik] + contCu[p][im * nK + ik] +
+                         chain.CKCu[p][im * nK + ik];
+            if (ck == 0. && sum == 0.) continue;
+            ++n;
+            double kap = kTable[ik], eK = std::hypot(M, kap);
+            nBad += !std::isfinite(ck) || !std::isfinite(sum);
+            nNeg += !(sum > 0.);
+            nSpace += !(eK * sum > kap * std::abs(ck));
+          }
+        }
+      }
+      std::printf("T8.4  L2 continuum + chain grid: %ld cells: %ld non-finite, %ld with C_K+C_u<=0, "
+                  "%ld spacelike  %s\n",
+                  n, nBad, nNeg, nSpace, PassFail(nBad == 0 && nNeg == 0 && nSpace == 0));
+    }
+
+    // ---- Output -----------------------------------------------------------------------------------
+    fout.cd();
+    tk->Write();
+    std::vector<double> kmcEdges = MCKappaEdges();
+    const int nKm = kmcEdges.size() - 1;
+    for (int p = 0; p < kNPairs; p++) {
+      std::string tag = kPairTag[p];
+      const std::vector<double>& me = mEdgesP[p];
+      const int nM = me.size() - 1;
+      TH2D hCK(("CKbar_chain_" + tag).c_str(), ("#bar{C}_{K} chain " + tag + ";M;#kappa").c_str(),
+               nM, me.data(), nK, kEdges.data());
+      TH2D hCu(("Cubar_chain_" + tag).c_str(), ("#bar{C}_{u} chain " + tag + ";M;#kappa").c_str(),
+               nM, me.data(), nK, kEdges.data());
+      TH1D hRho(("rho_chain_" + tag).c_str(), ("#rho chain " + tag + ";M (GeV)").c_str(), nM,
+                me.data());
+      TH1D hRhoV(("rho_chain_var_" + tag).c_str(), ("variance of rho_chain " + tag).c_str(), nM,
+                 me.data());
+      TH2D hMK(("chainMK_" + tag).c_str(), ("chain density " + tag + ";M;#kappa").c_str(), nM,
+               me.data(), nKm, kmcEdges.data());
+      TH2D hMKV(("chainMK_var_" + tag).c_str(), ("variance of chainMK " + tag).c_str(), nM,
+                me.data(), nKm, kmcEdges.data());
+      for (int im = 0; im < nM; im++) {
+        for (int ik = 0; ik < nK; ik++) {
+          hCK.SetBinContent(im + 1, ik + 1, chain.CK[p][im * nK + ik]);
+          hCu.SetBinContent(im + 1, ik + 1, chain.CKCu[p][im * nK + ik] - chain.CK[p][im * nK + ik]);
+        }
+        for (int b = 0; b < nKm; b++) {
+          hMK.SetBinContent(im + 1, b + 1, chain.mk[p][im * nKm + b]);
+          hMKV.SetBinContent(im + 1, b + 1, chain.mkVar[p][im * nKm + b]);
+        }
+      }
+      for (int im = 0; im <= nM; im++) {
+        hRho.SetBinContent(im + 1, chain.rho[p][im]);
+        hRhoV.SetBinContent(im + 1, chain.rhoVar[p][im]);
+      }
+      hCK.Write(); hCu.Write(); hRho.Write(); hRhoV.Write(); hMK.Write(); hMKV.Write();
+    }
+    TParameter<double>("kratio", kRatio).Write();
+    TParameter<double>("mcevents", mcEvents).Write();
   }
 
   // ---- Report: dropped channels and BR sums -------------------------------------------------------

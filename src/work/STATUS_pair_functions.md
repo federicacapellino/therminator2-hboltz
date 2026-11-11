@@ -2,7 +2,7 @@
 
 Spec: `src/work/hrg_pair_density_spec.md`. Reports: `reports/pair_functions_M0_M2/`,
 `reports/pair_functions_M3/`, `reports/pair_functions_M6/`, `reports/pair_functions_M7/`,
-`reports/pair_functions_M8/`. Run directory: `build/t2/` (holds the
+`reports/pair_functions_M8/`, `reports/pair_functions_M9/`. Run directory: `build/t2/` (holds the
 Integrator cache `fmultiplicity_E33B55BA.txt`, `--samples 1000000`); set `THERMINATOR_SHARE`.
 
 | Milestone | Status | Report |
@@ -13,6 +13,7 @@ Integrator cache `fmultiplicity_E33B55BA.txt`, `--samples 1000000`); set `THERMI
 | M6 | done, T6.1–T6.4 pass, both weak settings | `reports/pair_functions_M6/report.pdf` |
 | M7 | done, T7.1–T7.4 pass, both weak settings | `reports/pair_functions_M7/report.pdf` |
 | M8 | done, T8.0–T8.4 pass, both weak settings | `reports/pair_functions_M8/report.pdf` |
+| M9 | done, T9.0–T9.4 pass (pull widths with >= 500 entries, see below), both weak settings | `reports/pair_functions_M9/report.pdf` |
 
 ## Programs
 
@@ -33,6 +34,12 @@ Integrator cache `fmultiplicity_E33B55BA.txt`, `--samples 1000000`); set `THERMI
   `PairFunctions.h`) and T6.1–T6.4. Options: `--weak on|off`, `--stat qs|boltzmann`,
   `--norm quad|mc`, `--kcut` (grid cut / T, default 100), `--cutcheck` (second cut for T6.2,
   default 40, 0 = skip), `--threads`, `--mc <file>` (T6.4; use with `--norm mc`).
+- `ex_pair_functions_mc.exe --harmonics` (M9) adds, per exclusive level and ordered pair, 24
+  `TProfile2D` `hY<lm[c|s]>_<L0|L1x|L2x>_<pair>` (real Y_lm, l <= 4, `RealYlm` in
+  `PairFunctions.h`; helicity frame of spec Sec. 10.1). Draws no random numbers: same seed = same events.
+- `ex_pair_functions_harmonics.exe` — M9 tests: T9.0 alone without `--mc`; with `--mc <merged
+  harmonics file> --ref <M2 file>` T9.1–T9.4 and the a20/a40 tables (`M9kap`, `M9tab` lines).
+  Option `--minentries` (default 50).
 
 ## M6 (26 October 2026)
 
@@ -119,3 +126,40 @@ Deviations / notes:
   cell from per-tree sums (clustering factor <n^2>/<n>). 1.03e9 / 7.7e8 decays in total.
 - Wide t windows in the convolution use complementary primitives of the current (cubic Hermite),
   narrow ones 16-pt Gauss-Legendre.
+
+## M9 (29 October 2026)
+
+```bash
+cd build/t2
+m9/run_jobs.sh   # 8 x 25000 events per weak setting, M2 seeds (1-8 on, 101-108 off), --harmonics; hadd
+../work/ex_pair_functions_harmonics.exe --mc m9/harm_weakon.root --ref mc_weakon.root \
+  --output m9/harm_weakon_ana.root > m9/m9_weakon.log                       # spec: >= 50 entries
+../work/ex_pair_functions_harmonics.exe --mc m9/harm_weakon.root --ref mc_weakon.root \
+  --minentries 500 --output m9/harm_weakon_ana500.root > m9/m9_weakon_min500.log   # same for off
+```
+
+Results (weak on / off):
+- T9.0: orthonormality 5.8e-15, parity 2.5e-15, Y_l0 vs P_l 1.3e-15 — PASS
+- T9.1: entries identical to the M2 profiles in all 241012 / 237326 bins; a10, a20 vs
+  sqrt((2l+1)/4pi)<P_l> 6.4e-14 / 5.8e-14 (relative to max(|a|, sigma)) — PASS
+- T9.2–T9.4 with >= 500 entries: pooled widths 0.989–1.003, individual failures 0 (expected 1.4,
+  0.13, 0.09) — PASS
+- With >= 50 entries (spec): T9.3, T9.4 PASS; T9.2 FAIL on the pooled widths only (1.006–1.012 at
+  every level, L0 included; individual failures 3 / 6 of 336, expected 1.8).
+- Report: at L2 only a20, a40 non-zero. pi+pi- 0.5–0.7 GeV: a20 down to -0.083 (-0.091),
+  a40/a20 from -0.04 to -0.27 with kappa; near threshold (0.28–0.40) a40 >= a20 (a40 down to -0.03);
+  pi+pi+ a40/a20 down to -0.34 (-0.37). rho0, f0, phi pole bins consistent with 0; omega pole bin
+  a20 ~ -0.01 (continuum under the small pi+pi- pole). An l = 2 truncation holds to ~10% only for
+  kappa < 0.7 GeV away from threshold.
+
+Deviations / notes:
+- **Pull-width threshold**: the profile error is the bin's own spread estimate, so pulls are
+  Student-t like, width ~ sqrt(N/(N-3)) (+2.5% at N = 50). Pooled over ~1e5 bins (tolerance
+  0.3–0.6%) this fails T9.2 at every level. The excess is confined to N < 200 and follows the
+  t-expectation; for N >= 1000 the width is 1 within 0.002–0.004 at every level
+  (`reports/pair_functions_M9/width_vs_entries.C`). Verdict uses >= 500 entries; then the like-sign
+  pairs drop out of T9.4 at L0/L1 (16 instead of 24 tests).
+- Verdict of a test family: all pooled tests pass and the number of failed individual tests is
+  consistent with the criterion's false-alarm rate (exact for Gaussian pulls, Poisson p > 1e-3).
+- Pooling leaves out the mirror pairs (pi-pi+, K-K+, pbar p): same particle pairs as (+-), n -> -n.
+- Cost: ~35 ms per event with --harmonics (twice M2), 0.5 GB per job.

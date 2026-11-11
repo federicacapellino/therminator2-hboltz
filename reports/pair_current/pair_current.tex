@@ -1,0 +1,117 @@
+\documentclass[11pt]{article}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
+
+\newcommand{\A}{\mathcal A}
+\newcommand{\B}{\mathcal B}
+\newcommand{\C}{\mathcal C}
+\newcommand{\K}{\mathcal K}
+
+\title{The pair current $\C^\mu$ as a functional of the parent currents $S_a^\mu$}
+\author{THERMINATOR 2 (hboltz) -- pair-function tables}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\paragraph{Conventions.} Metric mostly plus. $K=p_1+p_2$, $Q=p_1-p_2$, $M^2=-K^2$,
+$\epsilon_K=-u\cdot K$, $\kappa=\sqrt{\epsilon_K^2-M^2}$, $p^*$ the momentum of the measured daughters in
+the pair rest frame. Parent $a$ (mass $m_a$), unobserved third daughter of mass $m_3$. Constant matrix
+elements, zero widths, zero lifetimes (daughters are emitted on the same hypersurface as the parent).
+
+\section{Definitions}
+
+Single-particle and pair currents are defined by Cooper--Frye-type relations,
+\begin{equation}
+E\frac{dN_a}{d^3P}=\int_\Sigma d\Sigma_\mu\,S_a^\mu(P),\qquad
+E_1E_2\frac{dN_{ss'}}{d^3p_1\,d^3p_2}=\int_\Sigma d\Sigma_\mu\,\C^\mu_{ss'}(p_1,p_2),
+\end{equation}
+with the decompositions
+\begin{equation}
+S_a^\mu=\A_a(\epsilon)\,P^\mu+\B_a(\epsilon)\,\epsilon\,u^\mu,\qquad
+\C^\mu=\C_K K^\mu+\C_u\,\epsilon_K u^\mu\;(+\,\C_Q Q^\mu).
+\end{equation}
+In the rest frame of the medium the density per unit volume and $d^3P$ is $\A_a+\B_a$, and
+$\C_K+\C_u=-u\cdot\C/\epsilon_K$. A thermal species has $\A_a=g_af_a/(2\pi)^3$ and $\B_a=0$.
+Since $d^3p_1/E_1\,d^3p_2/E_2=(d^3K/\epsilon_K)\,p^*\,dM\,d\Omega^*$, a gas at rest has
+\begin{equation}
+\rho_{ss'}(M)=\frac{1}{V}\frac{dN_{ss'}}{dM}=4\pi p^*\!\int d^3K\,(\C_K+\C_u).
+\end{equation}
+
+\section{General functional}
+
+Decays are linear and act on momenta only, so
+\begin{equation}
+\boxed{\;\C^\mu_{ss'}(p_1,p_2)=\sum_a\int\frac{d^3P}{E_P}\;\K_{a\to ss'}(P;p_1,p_2)\;S_a^\mu(P)\;}
+\label{eq:master}
+\end{equation}
+where $\K$ is the Lorentz-invariant pair kernel: the number of ordered $(s,s')$ pairs per decay of $a$,
+per $d^3p_1/E_1\,d^3p_2/E_2$. The vector structure of $S_a$ is carried over: $\A_a P^\mu$ feeds both
+$K^\mu$ and $u^\mu$, $\B_a\epsilon u^\mu$ feeds only $u^\mu$.
+
+\section{Kernels}
+
+\paragraph{One step, two body ($a\to ss'$).} $\K=(B/\Phi_2)\,\delta^4(P-p_1-p_2)$ with
+$\Phi_2=4\pi p^*/M$. The $d^3P$ integral sets $P=K$:
+\begin{equation}
+\C^\mu=\frac{B}{\Phi_2}\frac{\delta(M-m_a)}{m_a}\,S_a^\mu(K),\qquad
+\C_K=\frac{B}{\Phi_2}\frac{\delta(M-m_a)}{m_a}\A_a(\epsilon_K),\quad
+\C_u=\frac{B}{\Phi_2}\frac{\delta(M-m_a)}{m_a}\B_a(\epsilon_K).
+\end{equation}
+
+\paragraph{One step, three body ($a\to ss'X$).} $\K=(B/\Phi_3)\,2\delta\big((P-K)^2+m_3^2\big)$. In the
+pair rest frame $E_P^*=(m_a^2+M^2-m_3^2)/2M$ and $|\mathbf P^*|=p_3^*$ are fixed, and
+\begin{equation}
+\C^\mu=\frac{B}{\Phi_3}\frac{p_3^*}{M}\int d\Omega_P\,S_a^\mu(P).
+\end{equation}
+Let $t=-\hat{\mathbf u}^*\cdot\hat{\mathbf P}^*$, so that
+$\epsilon_P(t)=(\epsilon_KE_P^*+\kappa p_3^*t)/M$. After the azimuthal average,
+$P^\mu\to\alpha K^\mu+\beta\epsilon_Ku^\mu$ with
+$\alpha=(\kappa E_P^*+\epsilon_Kp_3^*t)/(M\kappa)$, $\beta=-Mp_3^*t/(\epsilon_K\kappa)$. With
+$\mathcal D=B/\Phi_3$:
+\begin{align}
+\C_K&=\frac{2\pi\mathcal Dp_3^*}{\kappa M^2}\int_{-1}^1dt\,(\kappa E_P^*+\epsilon_Kp_3^*t)\,\A_a(\epsilon_P),\\
+\C_u&=-\frac{2\pi\mathcal Dp_3^{*2}}{\kappa\epsilon_K}\int_{-1}^1dt\;t\,\A_a(\epsilon_P)
+      +\frac{2\pi\mathcal Dp_3^*}{M\epsilon_K}\int_{-1}^1dt\;\epsilon_P\,\B_a(\epsilon_P).
+\end{align}
+$\K$ depends on $P$ and $K$ only: $\C_Q=0$ exactly at one step.
+
+\paragraph{Chains ($n$ steps, $\Omega^*$ averaged).} The kernel of the last common ancestor $c$ is
+tabulated by Monte Carlo decays at rest, $h_c(M,k_c)$ = ordered pairs per decay per $dM\,dk_c$, with
+$k_c=|\mathbf K|$ in the rest frame of $c$ and the two particles in different first-generation
+branches. With $d^3P/E_P=(m_c/M)^2k_c^2\,dk_c\,d\Omega/\sqrt{M^2+k_c^2}$, Eq.~\eqref{eq:master} becomes
+\begin{equation}
+\bar\C^\mu=\sum_c\frac{1}{4\pi p^*}\frac{m_c^2}{2M^2}\int dk_c\,h_c(M,k_c)\,\frac{1}{2\pi}\int
+d\Omega_P\,S_c^\mu(P),\qquad
+E_P^*=\frac{m_c}{M}\sqrt{M^2+k_c^2},\quad p_P^*=\frac{m_c}{M}k_c .
+\end{equation}
+With $h_c\propto\delta(k_c-p_3)$ it reduces to the three-body result. The full chain kernel also
+depends on $P\cdot Q$ and $K\cdot Q$ ($\C_Q\neq0$); the $\Omega^*$ average drops this.
+
+\section{Levels of the table}
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Level & $S_a^\mu$ & $\K$ \\
+\midrule
+L0 & thermal: $\A_a=g_af_a/(2\pi)^3$, $\B_a=0$ & one step (two and three body) \\
+L1 & fed-down: full current from the decay recursion & one step \\
+L2 & fed-down & one step $+$ chain kernels $h_c$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The fed-down current is built in decreasing mass order: each channel of $a$ adds to every daughter
+current by the two-body rule (three-body channels: two-body rule averaged over the effective partner
+mass). With weak decays switched off, the weakly decaying species are not decayed.
+
+\paragraph{Implementation} (\texttt{src/work/PairFunctions.h}). Two-body poles: $\A_a$, $\B_a$ on the
+$\kappa$ grid; three-body continua: \texttt{CKCu3} (L0), \texttt{CKCu3Current} (L1); currents:
+\texttt{BuildCurrents}; chain kernels: \texttt{GenerateKernel}; convolution: \texttt{ConvolveChain},
+\texttt{ChainT}. Checks: T7.1 (thermal currents reproduce L0), T8.0 ($\delta$ kernels reproduce L1),
+T8.2 ($\int dM\,\rho^{\rm L2}=c^{\rm L2}$).
+
+\end{document}

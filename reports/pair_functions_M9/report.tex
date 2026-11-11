@@ -1,0 +1,281 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\usepackage{caption}
+\usepackage{float}
+\captionsetup{font=small,labelfont=bf}
+
+\newcommand{\pass}{\textcolor{green!45!black}{\textbf{PASS}}}
+\newcommand{\fail}{\textcolor{red!70!black}{\textbf{FAIL}}}
+\newcommand{\code}[1]{\texttt{\hyphenchar\font=`\-#1}}
+\sloppy
+\emergencystretch=2em
+
+\title{Pair functions in a hadron resonance gas at rest:\\ results of milestone M9
+(spherical-harmonic anisotropy)}
+\author{THERMINATOR 2 (hboltz fork), \code{src/work/hrg\_pair\_density\_spec.md}, Sec.~10}
+\date{29 October 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+Milestone M9 extends the Legendre moments of M2/M3 to the full decay direction
+$\Omega^*=(\theta^*,\phi^*)$ in the helicity frame, with the 24 real spherical harmonics
+$Y_{\ell m}$, $1\le\ell\le4$, at the ancestry levels L0, L1, L2, all ordered pairs and both weak
+settings. The MC events are those of M2 (same seeds), which T9.1 confirms bit for bit. All tests
+T9.0--T9.4 pass for both weak settings, with one deviation from the spec: the pooled pull-width
+criterion is applied to bins with at least 500 entries instead of 50. With 50 entries the pooled
+T9.2 widths are $1.006$--$1.012$ at every level, including L0. This excess is the Student-$t$ bias of a
+pull whose error is estimated from the bin itself; it is visible only because pooling gives
+$\sim10^5$ bins and a width tolerance of 0.3--0.6\%. The physics output: at L2 the only non-zero
+moments are $a_{20}$ and $a_{40}$. $a_{40}$ is not negligible: $|a_{40}/a_{20}|$ grows from
+$\sim0.05$ to $0.3$ with $\kappa$ in the $\pi\pi$ continuum at 0.5--0.7~GeV, and near the $\pi\pi$
+threshold $a_{40}$ is as large as $a_{20}$ or larger. Truncating the chain anisotropy at an
+$\epsilon_Q^2$ term is therefore adequate only away from threshold and at moderate $\kappa$.
+\end{abstract}
+
+\section{Spherical harmonics and moments}
+
+\paragraph{Definitions.} With $x=\cos\theta$ and the associated Legendre functions without the
+Condon--Shortley phase, $P_\ell^m(x)=(1-x^2)^{m/2}\,d^mP_\ell/dx^m$ ($0\le m\le\ell$, $P_\ell^0=P_\ell$),
+the real spherical harmonics are
+\begin{equation}
+Y_{\ell0}=N_{\ell0}P_\ell(\cos\theta),\qquad
+\begin{Bmatrix}Y^{c}_{\ell m}\\ Y^{s}_{\ell m}\end{Bmatrix}=\sqrt2\,N_{\ell m}P_\ell^m(\cos\theta)
+\begin{Bmatrix}\cos m\phi\\ \sin m\phi\end{Bmatrix},\qquad
+N_{\ell m}=\sqrt{\frac{2\ell+1}{4\pi}\frac{(\ell-m)!}{(\ell+m)!}},
+\end{equation}
+orthonormal on the sphere, $\int d\Omega\,Y_{\ell m}Y_{\ell'm'}=\delta_{\ell\ell'}\delta_{mm'}$. For
+$1\le\ell\le4$ there are $2\ell+1$ functions per $\ell$, 24 in total.
+
+\paragraph{$m=0$: the Legendre moments.} $Y_{\ell0}=\sqrt{(2\ell+1)/4\pi}\,P_\ell(\cos\theta)$ does not
+depend on $\phi$, so $a_{\ell0}=\sqrt{(2\ell+1)/4\pi}\,\langle P_\ell\rangle$: the $m=0$ moments are the
+$a_\ell$ of M2/M3 in another normalization ($\int_{-1}^1P_\ell^2dx=2/(2\ell+1)$ against
+$\int Y_{\ell0}^2d\Omega=1$). They describe a distribution that is axially symmetric around the polar
+axis $\hat z^*=\hat{\mathbf K}$. In the gas at rest the fluid velocity in the pair frame points along
+$-\hat{\mathbf K}$ and $\epsilon_Q=2\kappa p^*\cos\theta^*/M$ (equal masses) depends on $\theta^*$ only.
+So every $m\neq0$ moment vanishes, which is the content of T9.2. An $\epsilon_Q^n$ dependence of the pair
+functions contributes only $\ell\le n$ with the parity of $n$. An $\epsilon_Q^2$ term,
+$\epsilon_Q^2=c^2[1+2P_2(\cos\theta^*)]/3$ with $c=2\kappa p^*/M$, contributes to the $\Omega^*$-averaged density
+($\ell=0$, the $c^2/3$ part, contained in the L2 table; $a_{00}=1/\sqrt{4\pi}$ itself is fixed by the
+normalization) and to $a_{20}$. $a_{40}\neq0$ needs $\epsilon_Q^4$ or higher.
+
+\paragraph{$m\neq0$: flow.} In a moving gas the pair frame (pure boost along $\mathbf K$) keeps the
+part of the fluid four-velocity transverse to $\mathbf K$, $\mathbf u^*_\perp=\mathbf u_{\perp}^{\rm lab}$, so the
+axis $\hat u^*$ entering $\epsilon_Q=-2p^*\,\hat n\cdot\mathbf u^*$ is tilted away from $\hat{\mathbf K}$.
+In one fluid cell the distribution is then axially symmetric around $\hat u^*$,
+$\sum_\ell c_\ell P_\ell(\hat n\cdot\hat u^*)$, and the addition theorem
+$P_\ell(\hat n\cdot\hat u^*)=\frac{4\pi}{2\ell+1}\sum_mY_{\ell m}(\hat n)Y_{\ell m}(\hat u^*)$
+moves strength from $a_{\ell0}$ into $a_{\ell m}$, $m\neq0$, of the \emph{same} $\ell$, with a $\phi^*$
+dependence set by the azimuth of $\hat u^*$ relative to $\hat x^*$ (the beam). Averaged over cells,
+reflection symmetries remove the $\sin m\phi^*$ terms for a central source and the odd-$m$ $\cos$ terms at
+midrapidity; $\cos2\phi^*$, which measures $\langle u^{*2}_x\rangle-\langle u^{*2}_y\rangle$, generally
+survives. L0 and L1 stay isotropic with any flow (one-step decays with constant matrix elements are
+isotropic in the pair rest frame), so their $a_{\ell m}$ remain null tests.
+
+\paragraph{Estimating the coefficients.} The pair distribution in a bin $(M,\kappa)$ is expanded as
+\begin{equation}
+\frac{1}{N}\frac{dN}{d\Omega^*}=\frac{1}{4\pi}+\sum_{\ell\ge1}\sum_m a_{\ell m}\,Y_{\ell m}(\Omega^*),\qquad
+a_{\ell m}=\int d\Omega^*\,Y_{\ell m}(\Omega^*)\,\frac1N\frac{dN}{d\Omega^*}=\langle Y_{\ell m}\rangle,
+\end{equation}
+by orthonormality. The MC estimator is the sample mean over the $N$ ordered pairs of the bin,
+\begin{equation}
+\hat a_{\ell m}=\frac1N\sum_{i=1}^NY_{\ell m}(\theta^*_i,\phi^*_i),\qquad
+\sigma^2(\hat a_{\ell m})=\frac1N\Big(\frac1N\sum_iY_{\ell m}^2(\theta^*_i,\phi^*_i)-\hat a_{\ell m}^2\Big),
+\end{equation}
+which is what a \code{TProfile2D} filled with $Y_{\ell m}$ stores (sums of $Y$ and $Y^2$ and the entries
+$N$; the error is the profile's default). For an isotropic distribution $\langle Y_{\ell m}^2\rangle=1/4\pi$,
+so $\sigma\simeq1/\sqrt{4\pi N}$. Like-sign pairs enter twice with identical even-$\ell$ values, so their
+errors are multiplied by $\sqrt2$. Cumulative levels and wider $(M,\kappa)$ cells add the sums before
+dividing: $\hat a=\sum_bS_b/\sum_bN_b$ with $S_b=N_b\hat a_b$, and the same for $\sum Y^2$. The angles of
+pair $i$ are $\cos\theta^*_i=\hat n_i\cdot\hat z^*$ and $\phi^*_i=\mathrm{atan2}(\hat n_i\cdot\hat y^*,\hat n_i\cdot\hat x^*)$
+in the frame of Sec.~2.
+
+\section{Implementation}
+
+\paragraph{Harmonics.} \code{RealYlm(cth, phi, y)} in \code{PairFunctions.h}: $P_\ell^m$ by the
+standard recursion in $\ell$ at fixed $m$ starting from $P_m^m=(2m-1)!!\sin^m\theta$ (no
+Condon--Shortley phase), $N_{\ell m}$ of spec Sec.~10.2, $\sqrt2$ for $m\neq0$. Index
+$\ell^2-1+k$ with $k=0$ ($m=0$), $2m-1$ ($\cos m\phi$), $2m$ ($\sin m\phi$); tags \code{10},
+\code{21c}, \code{21s}, \dots
+
+\paragraph{MC.} \code{ex\_pair\_functions\_mc.exe --harmonics} fills, per exclusive level (L0, L1x,
+L2x) and ordered pair, 24 \code{TProfile2D} \code{hY<tag>\_<level>\_<pair>} with the $(M,\kappa)$
+binning of \code{hP1}, \code{hP2}. Frame (spec Sec.~10.1): $\hat z^*=\hat{\mathbf K}$,
+$\hat x^*$ = lab $\hat z$ made transverse to $\hat{\mathbf K}$ (lab $\hat x$ if the norm is below
+$10^{-6}$), $\hat y^*=\hat z^*\times\hat x^*$, $\hat n$ = direction of $\mathbf p_1^*$ after the
+pure boost; $\cos\theta^*$ is computed exactly as for \code{hP1}. The option draws no random numbers.
+Runs: $8\times2.5\times10^4$ events per weak setting with the M2 seeds (1--8 weak on, 101--108 weak
+off) in \code{build/t2/}, with the same \code{Integrator} cache; about 35~ms per event (twice the
+M2 cost) and 0.5~GB per job.
+
+\paragraph{Analysis.} \code{ex\_pair\_functions\_harmonics.exe} runs T9.0 alone, or T9.0--T9.4 and the
+report tables on a merged file (\code{--mc}, \code{--ref} for T9.1, \code{--minentries}). Pull
+criterion as T2.3: $|\text{mean}|<3/\sqrt n$ and $|\text{width}-1|<3/\sqrt{2n}$ over bins with at
+least \code{--minentries} entries. The errors of like-sign even-$\ell$ moments are scaled by $\sqrt2$
+(doublets). Each test family is run per (pair, cumulative level, function) and pooled per (level,
+function) and per level. Pooling leaves out the mirror pairs $\pi^-\pi^+$, $K^-K^+$, $\bar pp$,
+which are the $(+-)$ pairs with $\hat n\to-\hat n$ (identical even-$\ell$ and opposite odd-$\ell$
+moments). These pairs are still tested individually. With several hundred individual tests at a
+false-alarm rate of $\approx0.5\%$, a few chance failures are expected. A family passes if every
+pooled test passes and the number of failed individual tests is consistent with the false-alarm
+rate (Poisson $p>10^{-3}$). The rate is computed exactly for Gaussian pulls: the mean and the
+width are independent, with $n\,\text{width}^2\sim\chi^2_{n-1}$.
+
+\section{Results}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{llll}
+\toprule
+Test & Content & weak on & weak off \\
+\midrule
+T9.0 & orthonormality (32$\times$64 quadrature) & $5.8\times10^{-15}$ \pass & same \\
+     & parity $Y(-\hat n)=(-1)^\ell Y(\hat n)$, $10^4$ directions & $2.5\times10^{-15}$ \pass & same \\
+T9.1 & entries vs M2 profiles & identical, 241\,012 bins & identical, 237\,326 bins \\
+     & $a_{10},a_{20}$ vs $\sqrt{(2\ell+1)/4\pi}\langle P_\ell\rangle$ & $6.4\times10^{-14}$ \pass &
+       $5.8\times10^{-14}$ \pass \\
+\midrule
+\multicolumn{4}{l}{\emph{bins with $\ge500$ entries (verdict)}} \\
+T9.2 & $m\neq0$; pooled width L0 / L1 / L2 & 1.000 / 1.002 / 1.000 & 1.002 / 1.003 / 1.001 \\
+     & individual failures (expected) & 0 / 264 (1.4) \pass & 0 / 264 (1.4) \pass \\
+T9.3 & odd $\ell$, $m=0$, unlike-sign; pooled width & 1.001 / 1.000 / 1.001 & 1.000 / 0.995 / 0.996 \\
+     & individual failures & 0 / 24 \pass & 0 / 24 \pass \\
+T9.4 & $\ell=2,4$, $m=0$, L0 / L1; pooled width & 1.000 / 1.000 & 0.990 / 0.989 \\
+     & individual failures & 0 / 16 \pass & 0 / 16 \pass \\
+\midrule
+\multicolumn{4}{l}{\emph{bins with $\ge50$ entries (spec)}} \\
+T9.2 & pooled width L0 / L1 / L2 & 1.006 / 1.007 / 1.006 & 1.009 / 1.011 / 1.009 \\
+     & individual failures (expected) & 3 / 336 (1.8) & 6 / 336 (1.8) \\
+     & verdict & \fail{} (pooled widths) & \fail{} (pooled widths) \\
+T9.3, T9.4 & & \pass & \pass \\
+\bottomrule
+\end{tabular}
+\caption{M9 tests. Pooled means per level at most 0.004 (T9.2), 0.012 (T9.3), 0.016 (T9.4) in
+magnitude; per (level, function) at most 0.043, all within their tolerances. With 500 entries the like-sign pairs drop out of T9.4 at L0
+and L1 (no bins left), hence 16 instead of 24 tests. Logs: \code{m9\_weak*.log} (50 entries),
+\code{m9\_weak*\_min500.log} (500).}
+\end{table}
+
+\paragraph{T9.1.} The new runs reproduce the M2 events: entries are identical in every bin of the
+$a_{10}$ and $a_{20}$ profiles at all three exclusive levels, and the moments agree to $6\times10^{-14}$
+relative to $\max(|a|,\sigma)$. A pure relative difference would be meaningless in bins with mean
+$\approx0$. The pair counts of the 16 job logs also equal those of the M2 jobs seed by seed.
+
+\paragraph{Pull widths at 50 entries.} Table~\ref{tab:width} splits the T9.2 pulls by the
+number of entries of the bin. The excess is confined to bins with fewer than $\sim200$ entries and
+follows the Student-$t$ expectation $\sqrt{N/(N-3)}$ for a pull whose error is the profile's
+spread estimate, $s/\sqrt N$ with the $1/N$ variance. For $N\ge1000$ the width is 1 within its
+error at every level, L2 included. So there is no sign of correlated entries (pairs sharing a
+particle in a cascade) beyond the like-sign doublets. M3 (T2.3, T3.1) did not see this because it
+pooled far fewer bins (tolerance 2--5\%).
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrrrr}
+\toprule
+entries & L0 width & L2 width & $\pm$ & $t$-expectation \\
+\midrule
+50--100 & 1.020 & 1.027 & 0.004 / 0.003 & 1.025 / 1.031 \\
+100--200 & 1.002 & 1.014 & 0.006 / 0.003 & 1.012 / 1.018 \\
+200--500 & 1.006 & 1.004 & 0.007 / 0.003 & 1.005 / 1.007 \\
+$10^3$--$10^4$ & 0.997 & 0.999 & 0.004 / 0.002 & 1.001 / 1.001 \\
+$10^4$--$10^5$ & 1.001 & 1.001 & 0.004 / 0.002 & 1.000 / 1.000 \\
+\bottomrule
+\end{tabular}
+\caption{T9.2 pull width versus bin entries, weak on (\code{width\_vs\_entries.C},
+\code{width\_vs\_entries\_weak*.txt}; weak off the same). The $t$-expectation is averaged over the
+bins of the class (like-sign: $N/2$ independent entries). The measured excess is slightly below it
+at the lowest $N$ because $Y_{\ell m}$ is bounded and has lighter tails than a Gaussian.}
+\label{tab:width}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{fig/pulls.png}
+\caption{Pull distributions of T9.2--T9.4 (bins with $\ge500$ entries, mirror pairs excluded), with
+the unit Gaussian.}
+\end{figure}
+
+\section{Report: $a_{20}$ and $a_{40}$ at L2}
+
+The only moments that are non-zero at L2 are the even-$\ell$, $m=0$ ones, as expected.
+Figures~\ref{fig:pipm}--\ref{fig:kk} show $a_{20}$ and $a_{40}$ at L2 versus $\kappa$ at the M3 test
+masses, with $a_{20}$ at L1 for contrast. The $(M,\epsilon_K)$ cell tables (as in M3) are the
+\code{M9tab} lines of the logs. Highlights, weak on (weak off similar):
+
+\begin{itemize}
+\item $\pi^+\pi^-$, $M=0.5$--$0.7$~GeV: $a_{20}$ from $-0.004$ ($\kappa<0.2$) to $-0.083$
+  ($\kappa=1$--2~GeV) and $a_{40}$ from 0 to $+0.023$, so $a_{40}/a_{20}$ goes from $-0.04$ to
+  $-0.27$ (weak off $-0.06$ to $-0.28$). Consistent with M3: $a_{20}=\sqrt{5/4\pi}\,a_2$.
+\item $\pi^+\pi^-$ near threshold, $M=0.28$--$0.40$~GeV: $a_{20}$ changes sign inside the band
+  (at $M=0.30$ it rises to $+0.06$ at large $\kappa$, while the cell average is $-0.004$ to $-0.009$).
+  $a_{40}$ reaches $-0.03$, as large as $a_{20}$ or larger: $a_{40}/a_{20}$ ranges from $+0.9$ to $-0.5$
+  along $\kappa$ at $M=0.30$.
+\item $\pi^+\pi^-$, $0.40$--$0.50$ and $0.70$--$0.85$~GeV: $|a_{40}/a_{20}|\lesssim0.1$.
+\item $\pi^+\pi^+$: same pattern, larger: at 0.5--0.7~GeV $a_{20}$ down to $-0.10$ ($-0.15$ weak off),
+  $a_{40}/a_{20}$ down to $-0.34$ ($-0.37$); at threshold $a_{40}$ dominates (down to $-0.068$
+  at $\kappa>1$~GeV).
+\item $K^+K^-$: $\phi$ pole consistent with 0; continuum 1.03--1.20~GeV $a_{20}$ up to $+0.033$,
+  $a_{40}/a_{20}\approx-0.05$ to $-0.18$; above 1.2~GeV consistent with 0 within $\sim0.002$.
+\item Pole bins (one 4-MeV bin each) contain the pole and the L2 continuum underneath, so their
+  moments are those of the continuum diluted by the pole fraction. Where the pole dominates they
+  are consistent with 0: $\rho^0$, $f_0$, $\phi$ ($|a_{20}|,|a_{40}|\lesssim2\times10^{-3}$, the
+  largest values at the edges of the $\kappa$ range). For the $\omega$ (BR$(\pi^+\pi^-)=1.5\%$),
+  $a_{20}=-0.008$ to $-0.017$ at $\kappa>0.4$~GeV (10--15$\sigma$). For the $K^0_S$ with weak decays on,
+  $a_{20}\approx-0.001$ ($\sim5\sigma$); with weak off the $K^0$ does not decay, the bin is pure
+  continuum and $a_{20}$ reaches $-0.08$. Like-sign pairs have no pole: there the "pole bins" are
+  continuum ($a_{20}$ down to $-0.13$).
+\end{itemize}
+
+\noindent So an $\epsilon_Q^2$ (pure $\ell=2$) term describes the chain anisotropy to about 10\% only
+for $\kappa\lesssim0.7$~GeV away from threshold. At large $\kappa$ the $\ell=4$ component is 20--40\%
+of the $\ell=2$ one, and near the $\pi\pi$ threshold it is the leading term.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{fig/moments_pippim_weakon.png}
+\caption{$\pi^+\pi^-$, weak on: $a_{20}$, $a_{40}$ at L2 and $a_{20}$ at L1 versus $\kappa$, at the
+$\rho^0$ pole bin and in 20-MeV continuum windows (5 $M$ bins) at 0.30, 0.45, 0.60~GeV.}
+\label{fig:pipm}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\textwidth]{fig/moments_pippip_weakon.png}
+\caption{$\pi^+\pi^+$, weak on (errors include the doublet factor $\sqrt2$).}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\textwidth]{fig/moments_KpKm_weakon.png}
+\caption{$K^+K^-$, weak on: $\phi$ pole bin and continuum windows at 1.10, 1.30~GeV.}
+\label{fig:kk}
+\end{figure}
+
+\noindent Weak-off figures: \code{fig/moments\_*\_weakoff.png}.
+
+\section{Outputs and status}
+
+\begin{itemize}
+\item MC: \code{build/t2/m9/harm\_weak\{on,off\}.root} (hadd of \code{m9/jobs/}), driver
+  \code{m9/run\_jobs.sh}.
+\item Analysis: \code{m9/harm\_weak*\_ana.root} (50 entries), \code{\_ana500.root} (500):
+  \code{pulls\_T9\{2,3,4\}}, \code{a20\_<lev>\_<pair>\_<mass>}, \code{a40\_\dots},
+  \code{a20\_cells\_<lev>\_<pair>}, \code{a40\_cells\_\dots}.
+\item Deviation from the spec: the pull-width verdict uses bins with $\ge500$ entries; the
+  50-entry run is reported alongside.
+\end{itemize}
+
+\end{document}

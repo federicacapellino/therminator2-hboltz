@@ -431,6 +431,91 @@ Also $n_c=n_c^{\rm th}+\sum_an_a\sum_{\rm ch}B\,n_c^{\rm ch}$.
 After M8, M4 (sum rule) can use $c^{\rm L2}$: the L2 densities of all charged final species (counting, Sec. 9.5,
 cross-species included) must close $\mathrm{Var}(Q)/V=\sum_aq_a^2n_a^{\rm th}$.
 
+## 10. Part III: spherical-harmonic anisotropy test (gas at rest)
+
+Generalizes the Legendre moments of M2/M3 (functions of $\cos\theta^*$ only) to the full decay direction
+$\Omega^*=(\theta^*,\phi^*)$, for levels L0, L1, L2, all populated ordered pairs, both weak settings. Independent of
+Part II: it can be done before, after or in parallel with M6–M8. It needs a new MC run (the M2 files contain no
+$\phi^*$).
+
+### 10.1 Frame
+
+For each pair, with lab momenta $p_1$, $p_2$ and $K=p_1+p_2$:
+
+- $\hat n$: direction of $\mathbf p_1^*$, particle 1 boosted to the rest frame of $K$ by the pure boost
+  `TLorentzVector::Boost(-K.BoostVector())` (as for $\cos\theta^*$ now).
+- Polar axis: $\hat z^*=\hat{\mathbf K}$ (lab direction of the pair momentum).
+- Azimuth origin: the lab $z$ axis ("beam") projected transverse to $\mathbf K$,
+  $$\hat x^*=\frac{\hat z_{\rm lab}-(\hat z_{\rm lab}\cdot\hat{\mathbf K})\hat{\mathbf K}}{|\hat z_{\rm lab}-(\hat z_{\rm lab}\cdot\hat{\mathbf K})\hat{\mathbf K}|},\qquad
+  \hat y^*=\hat{\mathbf K}\times\hat x^* .$$
+  If the denominator is below $10^{-6}$ (pair along the beam), use $\hat x_{\rm lab}$ instead of $\hat z_{\rm lab}$ in this
+  construction. These axes are transverse to $\mathbf K$ and therefore unchanged by the boost.
+- Angles: $\cos\theta^*=\hat n\cdot\hat z^*$, $\phi^*=\mathrm{atan2}(\hat n\cdot\hat y^*,\,\hat n\cdot\hat x^*)$. Skip
+  $\kappa<10^{-6}$ GeV, as now.
+
+The frame is the helicity frame (polar axis along the pair, beam in the $x^*z^*$ plane). In the gas at rest nothing
+physical depends on the choice of $\hat x^*$, since the system is symmetric around $\hat{\mathbf K}$; the rule is only
+that $\hat x^*$ must not be built from the decay itself.
+
+### 10.2 Real spherical harmonics
+
+For $1\le\ell\le4$, orthonormal on the sphere ($\int Y\,Y'\,d\Omega=\delta$), with
+$N_{\ell m}=\sqrt{\frac{2\ell+1}{4\pi}\frac{(\ell-m)!}{(\ell+m)!}}$ and $P_\ell^m$ the associated Legendre functions
+**without** the Condon–Shortley phase:
+$$Y_{\ell0}=N_{\ell0}P_\ell(\cos\theta),\qquad Y^{c}_{\ell m}=\sqrt2\,N_{\ell m}P_\ell^m(\cos\theta)\cos m\phi,\qquad
+Y^{s}_{\ell m}=\sqrt2\,N_{\ell m}P_\ell^m(\cos\theta)\sin m\phi,\qquad 1\le m\le\ell .$$
+$2\ell+1$ functions per $\ell$, 24 in total. Implement $P_\ell^m$ explicitly (standard recursion or closed forms up to
+$\ell=4$): `std::sph_legendre` is not available in libc++ (clang on macOS), and `ROOT::Math` versions need MathMore.
+
+Moments in each $(M,\kappa)$ bin: $a_{\ell m}=\langle Y_{\ell m}(\theta^*,\phi^*)\rangle$ (for each of the 24 functions). For an
+isotropic distribution $\langle Y_{\ell m}^2\rangle=1/4\pi$, so $\sigma(a_{\ell m})\simeq1/\sqrt{4\pi N}$ for $N$ pairs in the
+bin (use the profile's own error in practice). Relation to M2/M3: $a_{\ell0}=\sqrt{(2\ell+1)/4\pi}\,\langle P_\ell\rangle$.
+
+### 10.3 MC
+
+- Option `--harmonics` of the event program: per level (L0, L1$-$L0, L2$-$L1, as now) and ordered pair, 24
+  `TProfile2D` in $(M,\kappa)$, same binning as the existing $P_1$, $P_2$ profiles; cumulative levels formed as in M3.
+- Use the same seeds and number of events as M2 ($2\times10^5$ per weak setting), so that the events are identical and
+  the $m=0$, $\ell\le2$ moments can be checked against the existing profiles.
+- Populated bins: $\ge50$ entries, as in T2.3.
+
+### 10.4 Symmetries and errors
+
+- Swapping the two particles sends $\hat n\to-\hat n$ and $Y_{\ell m}(-\hat n)=(-1)^\ell Y_{\ell m}(\hat n)$ (for the real
+  harmonics as well).
+- Like-sign pairs are filled in both orderings: for even $\ell$ the two entries are identical (doublets), so the
+  profile errors are multiplied by $\sqrt2$; for odd $\ell$ the two entries cancel and $a_{\ell m}=0$ by construction
+  (not tested).
+- Unlike-sign pairs: one entry per ordering, no correction. At $\mu=0$, charge conjugation maps a pair onto the same
+  pair with $\hat n\to-\hat n$ with equal probability, so all odd-$\ell$ moments vanish in expectation at every level
+  (a real test, as $a_1$ in M3).
+- Gas at rest: symmetric around $\hat{\mathbf K}$, so all $m\ne0$ moments vanish at every level.
+
+Expected pattern:
+
+| moments | L0 | L1 | L2 | reason |
+|---|---|---|---|---|
+| $m\ne0$, all $\ell$ | 0 | 0 | 0 | symmetry around $\hat{\mathbf K}$ (code, frame, decayer) |
+| odd $\ell$, $m=0$, unlike-sign | 0 | 0 | 0 | C symmetry at $\mu=0$ |
+| odd $\ell$, like-sign | 0 | 0 | 0 | by construction (not tested) |
+| even $\ell$ ($2,4$), $m=0$ | 0 | 0 | $\ne0$ | cascades (physics output) |
+
+### 10.5 Milestone M9 and tests
+
+- T9.0: the 24 functions are orthonormal (numerical quadrature on the sphere, $10^{-12}$) and satisfy
+  $Y(-\hat n)=(-1)^\ell Y(\hat n)$.
+- T9.1: with the same events as M2, $a_{10}$ and $a_{20}$ equal $\sqrt{3/4\pi}\langle P_1\rangle$ and $\sqrt{5/4\pi}\langle P_2\rangle$ of the
+  existing profiles bin by bin (relative $10^{-10}$); if the events cannot be reproduced exactly, statistically
+  instead.
+- T9.2: $m\ne0$ (both $c$ and $s$), all $\ell\le4$ (even $\ell$ only for like-sign), all levels, all populated ordered pairs,
+  both weak settings: pulls $a/\sigma$ with $|\mathrm{mean}|<3/\sqrt n$ and $|\mathrm{width}-1|<3/\sqrt{2n}$, per $(\ell,m)$ and
+  pooled.
+- T9.3: odd $\ell$, $m=0$, unlike-sign pairs, all levels: same criterion.
+- T9.4: even $\ell$, $m=0$, at L0 and L1: same criterion.
+- Report (no test): $a_{20}$ and $a_{40}$ at L2 versus $\kappa$ at the test masses, and the $(M,\epsilon_K)$ cell table as in M3, for
+  $(\pi^+\pi^-)$, $(\pi^+\pi^+)$, $(K^+K^-)$; the ratio $a_{40}/a_{20}$ as an indication of whether truncating the chain
+  anisotropy at $\ell=2$ (an $\epsilon_Q^2$ term) is sufficient.
+
 ## Appendix A. Python reference prototype (three-body functions)
 
 Run with `python3 prototype_3body.py` (needs numpy, scipy). Expected output: T1.1 relative difference about 1e-13, T1.2 worst

@@ -11,10 +11,15 @@
 // Also prints test T0.1 (weak switch). With --spectra (milestone M6, test T6.4) it also fills, for
 // all particles in the list (decayed or not), the per-event count and count^2 of every species
 // (hSpeciesN, hSpeciesN2, bins = ParticleDB index) and dN/dp of a few species (hSpec_<pdg>).
+// With --harmonics (milestone M9, spec Sec. 10) it also fills, per level and ordered pair, the 24
+// real spherical harmonics Y_lm(theta*, phi*), l <= 4, as TProfile2D hY<lm[c|s]>_<level>_<pair> in
+// (M, kappa): helicity frame, polar axis K, phi* = 0 in the plane of K and the lab z axis. No random
+// numbers are drawn for it, so a given seed generates the same events with or without the option.
 //
 // Usage:
 //   ex_pair_functions_mc.exe [--weak on|off] [--share <dir>] [--output <file>]
 //                            [--events <N>] [--samples <N>] [--seed <N>] [--spectra]
+//                            [--harmonics]
 
 #include "CLI11.hpp"
 #include "Event.h"
@@ -31,6 +36,7 @@
 #include <TParameter.h>
 #include <TProfile2D.h>
 #include <TRandom.h>
+#include <TVector3.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -58,6 +64,7 @@ int main(int argc, char** argv) {
   int nSamples = 1000000;
   int seed     = 0;
   bool spectra = false;
+  bool harmonics = false;
 
   CLI::App app{"ex_pair_functions_mc: HRG pair densities at three ancestry levels"};
   app.add_option("--share",   shareDir,   "path to SHARE particle database");
@@ -69,6 +76,7 @@ int main(int argc, char** argv) {
   app.add_option("--samples", nSamples,   "Monte Carlo integration samples")->default_val(1000000);
   app.add_option("--seed",    seed,       "random seed")->default_val(0);
   app.add_flag("--spectra",   spectra,    "also fill species counts and momentum spectra (T6.4)");
+  app.add_flag("--harmonics", harmonics, "also fill the spherical-harmonic profiles (M9)");
   CLI11_PARSE(app, argc, argv);
 
   bool weakOn = (weak == "on");
@@ -112,6 +120,7 @@ int main(int argc, char** argv) {
   TH3D* hMKC[kNLevels][kNPairs];
   TProfile2D* hP1[kNLevels][kNPairs];
   TProfile2D* hP2[kNLevels][kNPairs];
+  TProfile2D* hY[kNLevels][kNPairs][kNHarm] = {};
   for (int p = 0; p < kNPairs; p++) {
     auto masses = PairMasses(tPartDB.get(), p);
     std::vector<double> mEdges = MassEdges(masses.first + masses.second);
@@ -129,8 +138,16 @@ int main(int argc, char** argv) {
       hP2[l][p] = new TProfile2D(("hP2_" + sfx).c_str(),
                                  (sfx + " <P_{2}(cos#theta*)>;M (GeV);#kappa (GeV)").c_str(), nM,
                                  mEdges.data(), nK, kEdges.data());
+      if (!harmonics) continue;
+      for (int i = 0; i < kNHarm; i++) {
+        std::string tag = HarmTag(i);
+        hY[l][p][i] = new TProfile2D(("hY" + tag + "_" + sfx).c_str(),
+                                     (sfx + " <Y_{" + tag + "}(#Omega*)>;M (GeV);#kappa (GeV)").c_str(),
+                                     nM, mEdges.data(), nK, kEdges.data());
+      }
     }
   }
+  double ylm[kNHarm];
 
   // Species counts and spectra (--spectra), all particles in the list, decayed or not.
   const int nTypes = tPartDB->GetParticleTypeCount();
@@ -234,6 +251,18 @@ int main(int argc, char** argv) {
           hMKC[level][pair]->Fill(M, kappa, cth);
           hP1[level][pair]->Fill(M, kappa, cth);
           hP2[level][pair]->Fill(M, kappa, 0.5 * (3. * cth * cth - 1.));
+          if (harmonics) {
+            // Helicity frame (spec Sec. 10.1): z* = K, x* = lab z (lab x if K is along z) made
+            // transverse to K, y* = z* x x*. Transverse to K, so unchanged by the boost.
+            TVector3 zs = K.Vect().Unit();
+            TVector3 xs = TVector3(0., 0., 1.) - zs.Z() * zs;
+            if (xs.Mag() < 1e-6) xs = TVector3(1., 0., 0.) - zs.X() * zs;
+            xs = xs.Unit();
+            TVector3 ys = zs.Cross(xs);
+            TVector3 n  = v1.Vect().Unit();
+            RealYlm(cth, std::atan2(n.Dot(ys), n.Dot(xs)), ylm);
+            for (int i = 0; i < kNHarm; i++) hY[level][pair][i]->Fill(M, kappa, ylm[i]);
+          }
         }
       }
     }

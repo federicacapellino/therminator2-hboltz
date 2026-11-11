@@ -522,6 +522,58 @@ inline double BoltzmannRefKappa(double M, double k1, double k2, double T) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Real spherical harmonics, 1 <= l <= 4 (spec Sec. 10.2), orthonormal on the sphere:
+//   Y_l0 = N_l0 P_l, Y^c_lm = sqrt(2) N_lm P_l^m cos(m phi), Y^s_lm = sqrt(2) N_lm P_l^m sin(m phi),
+// P_l^m without the Condon-Shortley phase. Index l*l - 1 + k, k = 0 (m = 0), 2m - 1 (c), 2m (s).
+
+static constexpr int kHarmLMax = 4;
+static constexpr int kNHarm    = (kHarmLMax + 1) * (kHarmLMax + 1) - 1;
+
+inline int HarmL(int i) {
+  int l = 1;
+  while ((l + 1) * (l + 1) - 1 <= i) ++l;
+  return l;
+}
+inline int HarmM(int i) { return (i - (HarmL(i) * HarmL(i) - 1) + 1) / 2; }
+// 0 for m = 0, +1 for the cos, -1 for the sin function.
+inline int HarmCS(int i) {
+  int k = i - (HarmL(i) * HarmL(i) - 1);
+  return k == 0 ? 0 : (k % 2 == 1 ? +1 : -1);
+}
+// "10", "21c", "21s", ...
+inline std::string HarmTag(int i) {
+  std::string tag = std::to_string(HarmL(i)) + std::to_string(HarmM(i));
+  if (HarmCS(i) > 0) tag += "c";
+  if (HarmCS(i) < 0) tag += "s";
+  return tag;
+}
+
+inline void RealYlm(double cth, double phi, double y[kNHarm]) {
+  const double x = cth, sth = std::sqrt(std::max(0., 1. - x * x));
+  // P[l][m], recursion in l at fixed m starting from P_m^m = (2m-1)!! sin^m
+  double P[kHarmLMax + 1][kHarmLMax + 1] = {};
+  double pmm = 1.;
+  for (int m = 0; m <= kHarmLMax; m++) {
+    if (m > 0) pmm *= (2. * m - 1.) * sth;
+    P[m][m] = pmm;
+    if (m + 1 <= kHarmLMax) P[m + 1][m] = x * (2. * m + 1.) * pmm;
+    for (int l = m + 2; l <= kHarmLMax; l++)
+      P[l][m] = ((2. * l - 1.) * x * P[l - 1][m] - (l + m - 1.) * P[l - 2][m]) / (l - m);
+  }
+  for (int l = 1; l <= kHarmLMax; l++) {
+    const int base = l * l - 1;
+    double ratio = 1.; // (l - m)!/(l + m)!
+    y[base] = std::sqrt((2. * l + 1.) / (4. * M_PI)) * P[l][0];
+    for (int m = 1; m <= l; m++) {
+      ratio /= (l + m) * (l - m + 1.);
+      double norm = std::sqrt(2. * (2. * l + 1.) / (4. * M_PI) * ratio);
+      y[base + 2 * m - 1] = norm * P[l][m] * std::cos(m * phi);
+      y[base + 2 * m]     = norm * P[l][m] * std::sin(m * phi);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
 // Single-particle currents (spec Sec. 9.2): S_c = A_c p + B_c eps u, gas at rest, per unit volume
 // and d^3p (A_c + B_c is the rest-frame density). Thermal part analytic, feed-down part on a grid.
 

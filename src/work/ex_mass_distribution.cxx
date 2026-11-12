@@ -10,7 +10,7 @@
 // the mean number of associated type-2 particles per type-1 particle.
 //
 // Usage:
-//   ex_mass_distribution.exe [--model hrg|blastwave] [--ini <file>]
+//   ex_mass_distribution.exe [--model hrg|blastwave|blastwaveaniso] [--ini <file>]
 //                            [--share <dir>] [--output <file>]
 //                            [--events <N>] [--samples <N>] [--seed <N>]
 //                            [--pid1 <pdg>] [--pid2 <pdg>]
@@ -20,6 +20,7 @@
 #include "Integrator.h"
 #include "Model.h"
 #include "Model_BlastWave.h"
+#include "Model_BlastWaveAniso.h"
 #include "Model_HRG.h"
 #include "ParticleDB.h"
 #include "THGlobal.h"
@@ -42,7 +43,7 @@ static double invMass(const Particle& a, const Particle& b) {
 
 int main(int argc, char** argv) {
   std::string shareDir   = "";
-  std::string outputFile = "mass_distribution.root";
+  std::string outputFile = "";
   std::string modelName  = "hrg";
   std::string iniFile    = "";
   int nEvents  = 500;
@@ -53,9 +54,12 @@ int main(int argc, char** argv) {
 
   CLI::App app{"ex_mass_distribution: correlated pair invariant mass distribution"};
   app.add_option("--share",   shareDir,   "path to SHARE particle database");
-  app.add_option("--output",  outputFile, "output ROOT file")->default_str("mass_distribution.root");
-  app.add_option("--model",   modelName,  "model: hrg (default) or blastwave")->default_str("hrg");
-  app.add_option("--ini",     iniFile,    "ini file (required for blastwave model)");
+  auto* outOpt = app.add_option("--output", outputFile,
+      "output ROOT file (default: mass_<model>.root)");
+  app.add_option("--model",   modelName,  "model: hrg (default), blastwave or blastwaveaniso")
+      ->default_str("hrg")
+      ->check(CLI::IsMember({"hrg", "blastwave", "blastwaveaniso"}));
+  app.add_option("--ini",     iniFile,    "ini file (required for the blast-wave models)");
   app.add_option("--events",  nEvents,    "number of events to generate")->default_val(500);
   app.add_option("--samples", nSamples,   "Monte Carlo integration samples")->default_val(1000000);
   app.add_option("--seed",    seed,       "random seed")->default_val(0);
@@ -63,19 +67,27 @@ int main(int argc, char** argv) {
   app.add_option("--pid2",    pid2,       "PDG code of particle type 2")->default_val(-211);
   CLI11_PARSE(app, argc, argv);
 
-  // pT for blastwave (flow breaks boost invariance), |p| for HRG (isotropic).
-  bool useTransverse = (modelName == "blastwave");
+  // pT for the blast-wave models (flow breaks boost invariance), |p| for HRG (isotropic).
+  bool useTransverse = (modelName != "hrg");
+
+  if (outOpt->count() == 0) {
+    std::string tag = modelName;
+    outputFile = "mass_" + tag + ".root";
+  }
   std::string pVarLabel = useTransverse ? "p_{T,1} (GeV)" : "|p_{1}| (GeV)";
 
   gRandom->SetSeed(seed);
 
   std::unique_ptr<Model> model;
-  if (modelName == "blastwave") {
+  if (modelName == "blastwave" || modelName == "blastwaveaniso") {
     if (iniFile.empty()) {
-      std::cerr << "Error: --ini is required for the blastwave model\n";
+      std::cerr << "Error: --ini is required for the " << modelName << " model\n";
       return 1;
     }
-    model = std::make_unique<Model_BlastWave>(iniFile.c_str());
+    if (modelName == "blastwave")
+      model = std::make_unique<Model_BlastWave>(iniFile.c_str());
+    else
+      model = std::make_unique<Model_BlastWaveAniso>(iniFile.c_str());
   } else {
     model = std::make_unique<Model_HRG>();
   }

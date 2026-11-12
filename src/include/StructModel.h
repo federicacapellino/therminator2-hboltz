@@ -51,6 +51,8 @@
 #define _MODEL_T_FORMAT_ "dummy/F"
 #define _MODEL_T_FORMAT_KRAKOWSFO_ "RapPRange/F:RapSRange:RhoMax:Tau:Temp:MuB:MuI:MuS:MuC"
 #define _MODEL_T_FORMAT_BLASTWAVE_ "RapPSRange/F:RapSRange:RhoMax:Tau:Temp:MuB:MuI:MuS:MuC:Vt"
+#define _MODEL_T_FORMAT_BLASTWAVEANISO_                                                          \
+  "RapPSRange/F:RapSRange:Rx:Ry:As:Tau0:DTau:Rho0:Rho2:FlowPower:Temp:MuB:MuI:MuS:MuC"
 #define _MODEL_T_FORMAT_BWA_ "RapPRange/F:RapSRange:RhoMax:Tau:Temp:MuB:MuI:MuS:MuC:Vt:A:Delay"
 #define _MODEL_T_FORMAT_LHYQUID2DBI_                                                               \
   "RapPRange/"                                                                                     \
@@ -72,6 +74,13 @@ struct Model_t_KrakowSFO {
 struct Model_t_BlastWave {
   Float_t RapPSRange, RapSRange, RhoMax, Tau, Temp, MuB, MuI, MuS, MuC;
   Float_t Vt;
+};
+
+// Lengths in [fm], temperature and chemical potentials in [MeV]. The member order must match
+// _MODEL_T_FORMAT_BLASTWAVEANISO_ (ROOT leaflist).
+struct Model_t_BlastWaveAniso {
+  Float_t RapPSRange, RapSRange, Rx, Ry, As, Tau0, DTau, Rho0, Rho2, FlowPower;
+  Float_t Temp, MuB, MuI, MuS, MuC;
 };
 
 struct Model_t_BWA {

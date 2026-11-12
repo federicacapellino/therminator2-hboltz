@@ -11,6 +11,7 @@ EventGenerator.cxx
 Integrator.cxx
 Model.cxx
 Model_BlastWave.cxx
+Model_BlastWaveAniso.cxx
 Model_HRG.cxx
 Parser.cxx
 Particle.cxx

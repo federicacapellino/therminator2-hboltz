@@ -10,7 +10,7 @@
 // the mean number of associated type-2 particles per type-1 particle.
 //
 // Usage:
-//   ex_mass_distribution_connected.exe [--model hrg|blastwave] [--ini <file>]
+//   ex_mass_distribution_connected.exe [--model hrg|blastwave|blastwaveaniso] [--ini <file>]
 //                            [--share <dir>] [--output <file>]
 //                            [--events <N>] [--samples <N>] [--seed <N>]
 //                            [--pid1 <pdg>] [--pid2 <pdg>]
@@ -20,6 +20,7 @@
 #include "Integrator.h"
 #include "Model.h"
 #include "Model_BlastWave.h"
+#include "Model_BlastWaveAniso.h"
 #include "Model_HRG.h"
 #include "ParticleCoor.h"
 #include "ParticleDB.h"
@@ -85,8 +86,10 @@ int main(int argc, char** argv) {
   app.add_option("--share",   shareDir,   "path to SHARE particle database");
   auto* outOpt = app.add_option("--output", outputFile,
       "output ROOT file (default: mass_con/mass_con_<model>_<ymax>_<deltay>_<events>.root)");
-  app.add_option("--model",   modelName,  "model: hrg (default) or blastwave")->default_str("hrg");
-  app.add_option("--ini",     iniFile,    "ini file (required for blastwave model)");
+  app.add_option("--model",   modelName,  "model: hrg (default), blastwave or blastwaveaniso")
+      ->default_str("hrg")
+      ->check(CLI::IsMember({"hrg", "blastwave", "blastwaveaniso"}));
+  app.add_option("--ini",     iniFile,    "ini file (required for the blast-wave models)");
   app.add_option("--events",  nEvents,    "number of events to generate")->default_val(500);
   app.add_option("--samples", nSamples,   "Monte Carlo integration samples")->default_val(1000000);
   app.add_option("--seed",    seed,       "random seed")->default_val(0);
@@ -98,11 +101,11 @@ int main(int argc, char** argv) {
       ->default_val(kDeltaYDefault);
   CLI11_PARSE(app, argc, argv);
 
-  // pT for blastwave (flow breaks boost invariance), |p| for HRG (isotropic).
-  bool useTransverse = (modelName == "blastwave");
+  // pT for the blast-wave models (flow breaks boost invariance), |p| for HRG (isotropic).
+  bool useTransverse = (modelName != "hrg");
 
   if (outOpt->count() == 0) {
-    std::string tag = useTransverse ? "blastwave" : "hrg";
+    std::string tag = modelName;
     char buf[256];
     std::snprintf(buf, sizeof(buf), "mass_con/mass_con_%s_%g_%g_%d.root", tag.c_str(), Ymax, DeltaY,
                   nEvents);
@@ -120,12 +123,15 @@ int main(int argc, char** argv) {
   gRandom->SetSeed(seed);
 
   std::unique_ptr<Model> model;
-  if (modelName == "blastwave") {
+  if (modelName == "blastwave" || modelName == "blastwaveaniso") {
     if (iniFile.empty()) {
-      std::cerr << "Error: --ini is required for the blastwave model\n";
+      std::cerr << "Error: --ini is required for the " << modelName << " model\n";
       return 1;
     }
-    model = std::make_unique<Model_BlastWave>(iniFile.c_str());
+    if (modelName == "blastwave")
+      model = std::make_unique<Model_BlastWave>(iniFile.c_str());
+    else
+      model = std::make_unique<Model_BlastWaveAniso>(iniFile.c_str());
   } else {
     model = std::make_unique<Model_HRG>();
   }
@@ -158,7 +164,14 @@ int main(int argc, char** argv) {
       (std::string(";") + pVarLabel + ";M (GeV)").c_str(),
       nPbins, 0., pMax, 100, 0., 2.);
 
+  // Window-normalized variants: per pid1 particle inside |y| < Ymax/2 instead of per
+  // pid1 over all rapidities, so models with different rapidity coverage compare fairly.
+  TH1D* hMassWin = new TH1D("hMassWin",
+      "Correlated pair invariant mass, trigger in window (per N_{1} in |y|<Y_{max}/2);M (GeV);(1/N_{1}^{win}) dN_{pairs}/dM",
+      100, 0., 2.);
+
   long nPid1Total = 0;
+  long nPid1Win   = 0;
 
   for (int ievent = 0; ievent < nEvents; ievent++) {
     tEvent->Reset();
@@ -182,6 +195,7 @@ int main(int argc, char** argv) {
           if (it->pid == pid1) {
             group1.push_back(&*it);
             ++nPid1Total;
+            if (std::abs(getRapidity(*it)) <= Ymax / 2.) ++nPid1Win;
             double pVar = useTransverse
                 ? std::sqrt(it->px * it->px + it->py * it->py)
                 : std::sqrt(it->px * it->px + it->py * it->py + it->pz * it->pz);
@@ -199,6 +213,7 @@ int main(int argc, char** argv) {
           if (p1 != p2) {
             double m = invMass(*p1, *p2);
             hMass->Fill(m);
+            if (std::abs(getRapidity(*p1)) <= Ymax / 2.) hMassWin->Fill(m);
             double pVar1 = useTransverse
                 ? std::sqrt(p1->px * p1->px + p1->py * p1->py)
                 : std::sqrt(p1->px * p1->px + p1->py * p1->py + p1->pz * p1->pz);
@@ -240,8 +255,19 @@ int main(int argc, char** argv) {
     hMass->Scale(1.0 / nPid1Total);
   }
 
+  // Same raw rapidity-cut pairs, normalized per pid1 inside the window (clone before
+  // hMassRapCut is scaled).
+  TH1D* hMassRapCutWin = static_cast<TH1D*>(hMassRapCut->Clone("hMassRapCutWin"));
+  hMassRapCutWin->SetTitle(
+      "Correlated pair invariant mass (rapidity cut) (per N_{1} in |y|<Y_{max}/2);M (GeV);(1/N_{1}^{win}) dN_{pairs}/dM");
+
    if (nPid1Total > 0) {
     hMassRapCut->Scale(Ymax * Ymax / (Ymax - DeltaY) / (Ymax - DeltaY) / nPid1Total);
+  }
+
+  if (nPid1Win > 0) {
+    hMassWin->Scale(1.0 / nPid1Win);
+    hMassRapCutWin->Scale(Ymax * Ymax / (Ymax - DeltaY) / (Ymax - DeltaY) / nPid1Win);
   }
 
   // Connected part: full correlated distribution minus the rapidity-cut estimate.
@@ -259,6 +285,20 @@ int main(int argc, char** argv) {
   std::cout << "Rapidity-cut raw pair count (Ymax=" << Ymax << ", DeltaY=" << DeltaY
             << "): " << cutCount << " +/- " << cutErr << "\n";
 
+  // Window-normalized connected part: hMassWin - hMassRapCutWin.
+  TH1D* hMassConnWin = static_cast<TH1D*>(hMassWin->Clone("hMassConnWin"));
+  hMassConnWin->SetTitle(
+      "Connected pair invariant mass (hMassWin - hMassRapCutWin) (per N_{1} in |y|<Y_{max}/2);M (GeV);(1/N_{1}^{win}) dN_{pairs}/dM");
+  hMassConnWin->Add(hMassRapCutWin, -1.0);
+
+  std::cout << "pid1 in window |y| <= " << Ymax / 2. << ": " << nPid1Win << " of " << nPid1Total
+            << "\n";
+  double winErr = 0., winCutErr = 0.;
+  double winYield = hMassWin->IntegralAndError(0, hMassWin->GetNbinsX() + 1, winErr);
+  double winCut   = hMassRapCutWin->IntegralAndError(0, hMassRapCutWin->GetNbinsX() + 1, winCutErr);
+  std::cout << "Window-normalized correlated yield: " << winYield << " +/- " << winErr << "\n";
+  std::cout << "Window-normalized rapidity-cut count: " << winCut << " +/- " << winCutErr << "\n";
+
   // Generation parameters, for the plotting macro to annotate the figure.
   fout.cd();
   TNamed runModel("model", modelName.c_str());
@@ -266,6 +306,8 @@ int main(int argc, char** argv) {
   TParameter<int>("nEvents", nEvents).Write();
   TParameter<double>("Ymax", Ymax).Write();
   TParameter<double>("DeltaY", DeltaY).Write();
+  TParameter<double>("nPid1", nPid1Total).Write();
+  TParameter<double>("nPid1Win", nPid1Win).Write();
 
   fout.Write();
   return 0;

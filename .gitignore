@@ -15,3 +15,7 @@ doc/*
 *.txt
 *.log
 *.ini
+
+# Local out-of-source build tree (never pushed)
+build/
+compile_commands.json

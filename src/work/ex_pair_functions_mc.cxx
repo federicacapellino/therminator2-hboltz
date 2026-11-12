@@ -17,7 +17,7 @@
 // numbers are drawn for it, so a given seed generates the same events with or without the option.
 //
 // Usage:
-//   ex_pair_functions_mc.exe [--weak on|off] [--share <dir>] [--output <file>]
+//   ex_pair_functions_mc.exe [--weak on|off] [--share <dir>] [--medges <file>] [--output <file>]
 //                            [--events <N>] [--samples <N>] [--seed <N>] [--spectra]
 //                            [--harmonics]
 
@@ -66,7 +66,9 @@ int main(int argc, char** argv) {
   bool spectra = false;
   bool harmonics = false;
 
+  std::string massEdgesFile = "";
   CLI::App app{"ex_pair_functions_mc: HRG pair densities at three ancestry levels"};
+  app.add_option("--medges",     massEdgesFile, "file of mass edges (GeV) used for every pair");
   app.add_option("--share",   shareDir,   "path to SHARE particle database");
   app.add_option("--output",  outputFile, "output ROOT file")->default_val("pair_mc.root");
   app.add_option("--weak",    weak,       "weak decays: on (default) or off")
@@ -78,6 +80,10 @@ int main(int argc, char** argv) {
   app.add_flag("--spectra",   spectra,    "also fill species counts and momentum spectra (T6.4)");
   app.add_flag("--harmonics", harmonics, "also fill the spherical-harmonic profiles (M9)");
   CLI11_PARSE(app, argc, argv);
+  if (!massEdgesFile.empty() && !SetMassEdgesFile(massEdgesFile)) {
+    std::cerr << "Error: cannot read increasing mass edges from " << massEdgesFile << "\n";
+    return 1;
+  }
 
   bool weakOn = (weak == "on");
 
@@ -294,6 +300,7 @@ int main(int argc, char** argv) {
 
   fout.cd();
   TNamed("weak", weak.c_str()).Write();
+  TNamed("medges", massEdgesFile.c_str()).Write();
   TNamed("dbhash", ParticleDBHash(tPartDB.get()).c_str()).Write();
   TNamed("modelhash", model->GetHash()).Write();
   TParameter<double>("T", T).Write();

@@ -12,7 +12,7 @@
 //
 // Usage:
 //   ex_pair_functions_table.exe [--level L0|L1|L2] [--weak on|off] [--stat qs|boltzmann]
-//                               [--norm quad|mc] [--share <dir>] [--output <file>]
+//                               [--norm quad|mc] [--share <dir>] [--medges <file>] [--output <file>]
 //                               [--samples <N>] [--varsamples <N>] [--seed <N>]
 //                               [--kratio <x>] [--kmin <N>] [--kmax <N>] [--mcevents <N>]
 //                               [--threads <N>]
@@ -62,7 +62,9 @@ int main(int argc, char** argv) {
   double mcEvents = 2e5;
   int nThreads    = 8;
 
+  std::string massEdgesFile = "";
   CLI::App app{"ex_pair_functions_table: pair functions C_K, C_u of a resonance gas at rest"};
+  app.add_option("--medges",     massEdgesFile, "file of mass edges (GeV) used for every pair");
   app.add_option("--share",      shareDir,    "path to SHARE particle database");
   app.add_option("--output",     outputFile,  "output ROOT file")->default_val("pair_table.root");
   app.add_option("--weak",       weak,        "weak decays: on (default) or off")
@@ -90,6 +92,10 @@ int main(int argc, char** argv) {
       ->default_val(200000);
   app.add_option("--seed",       seed,        "random seed")->default_val(0);
   CLI11_PARSE(app, argc, argv);
+  if (!massEdgesFile.empty() && !SetMassEdgesFile(massEdgesFile)) {
+    std::cerr << "Error: cannot read increasing mass edges from " << massEdgesFile << "\n";
+    return 1;
+  }
 
   const bool weakOn  = (weak == "on");
   const bool quantum = (stat == "qs");
@@ -931,6 +937,7 @@ int main(int argc, char** argv) {
   TParameter<double>("T", T).Write();
   TParameter<double>("V", V).Write();
   TNamed("weak", weak.c_str()).Write();
+  TNamed("medges", massEdgesFile.c_str()).Write();
   TNamed("stat", stat.c_str()).Write();
   TNamed("level", level.c_str()).Write();
   if (l1) TNamed("norm", norm.c_str()).Write();

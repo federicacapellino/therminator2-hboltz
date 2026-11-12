@@ -17,6 +17,9 @@
 #include <array>
 #include <cmath>
 #include <cstdlib>
+#include <fstream>
+#include <sstream>
+#include <string>
 #include <list>
 #include <map>
 #include <sstream>
@@ -428,8 +431,33 @@ inline ContributionSet BuildContributions(ParticleDB* db, double T, bool quantum
 // ---------------------------------------------------------------------------------------------
 // Binning (spec Sec. 3.2) and bin-integrated predictions (per unit volume)
 
-// M: from threshold to 2 GeV, 1 MeV for the first 30 MeV, then 4 MeV.
+// Optional mass edges from a file (--medges): one edge per line, '#' comments, strictly increasing. When set,
+// every pair uses these edges unchanged (bins below a pair's threshold stay empty).
+inline std::vector<double>& MassEdgesFromFile() {
+  static std::vector<double> edges;
+  return edges;
+}
+
+inline bool SetMassEdgesFile(const std::string& path) {
+  std::ifstream in(path);
+  std::vector<double>& edges = MassEdgesFromFile();
+  edges.clear();
+  std::string line;
+  while (std::getline(in, line)) {
+    line = line.substr(0, line.find('#'));
+    std::istringstream ss(line);
+    double e;
+    while (ss >> e) edges.push_back(e);
+  }
+  bool ok = in.eof() && edges.size() >= 2;
+  for (size_t i = 1; ok && i < edges.size(); i++) ok = edges[i] > edges[i - 1];
+  if (!ok) edges.clear();
+  return ok;
+}
+
+// M: from threshold to 2 GeV, 1 MeV for the first 30 MeV, then 4 MeV (or the --medges file).
 inline std::vector<double> MassEdges(double threshold) {
+  if (!MassEdgesFromFile().empty()) return MassEdgesFromFile();
   std::vector<double> edges;
   for (int i = 0; i < 30; i++) edges.push_back(threshold + 0.001 * i);
   for (double e = threshold + 0.030; e < 2.0 - 1e-9; e += 0.004) edges.push_back(e);

@@ -18,6 +18,7 @@
 //
 // Usage:
 //   ex_pair_functions_mc.exe [--weak on|off] [--share <dir>] [--medges <file>] [--output <file>]
+//                            [--temperature <GeV>]
 //                            [--events <N>] [--samples <N>] [--seed <N>] [--spectra]
 //                            [--harmonics]
 
@@ -41,6 +42,7 @@
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
+#include <iomanip>
 #include <iostream>
 #include <map>
 #include <unordered_map>
@@ -63,6 +65,7 @@ int main(int argc, char** argv) {
   int nEvents  = 100;
   int nSamples = 1000000;
   int seed     = 0;
+  double temperature = 0.155;
   bool spectra = false;
   bool harmonics = false;
 
@@ -77,6 +80,7 @@ int main(int argc, char** argv) {
   app.add_option("--events",  nEvents,    "number of events to generate")->default_val(100);
   app.add_option("--samples", nSamples,   "Monte Carlo integration samples")->default_val(1000000);
   app.add_option("--seed",    seed,       "random seed")->default_val(0);
+  app.add_option("--temperature", temperature, "HRG temperature in GeV (default 0.155)")->default_val(0.155);
   app.add_flag("--spectra",   spectra,    "also fill species counts and momentum spectra (T6.4)");
   app.add_flag("--harmonics", harmonics, "also fill the spherical-harmonic profiles (M9)");
   CLI11_PARSE(app, argc, argv);
@@ -95,7 +99,7 @@ int main(int argc, char** argv) {
 
   gRandom->SetSeed(seed);
 
-  auto model   = std::make_unique<Model_HRG>();
+  auto model   = std::make_unique<Model_HRG>(temperature);
   auto tPartDB = std::make_unique<ParticleDB>(shareDir);
   int nStable  = SetWeakDecays(tPartDB.get(), weakOn);
   if (!weakOn && nStable != kNWeakTypes) {
@@ -109,7 +113,7 @@ int main(int argc, char** argv) {
 
   const double T = model->GetTemperature();
   const double V = model->GetVolume();
-  std::cout << "HRG: T = " << T << " GeV, V = " << V << " GeV^-3 ("
+  std::cout << std::setprecision(17) << "HRG: T = " << T << std::setprecision(6) << " GeV, V = " << V << " GeV^-3 ("
             << V * kHbarC * kHbarC * kHbarC << " fm^3), weak decays " << weak << "\n";
 
   // ---- Histograms -------------------------------------------------------------------------------

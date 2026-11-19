@@ -36,7 +36,7 @@
 
 class Model_HRG : public Model {
 public:
-  Model_HRG();
+  explicit Model_HRG(double aTemperature = 0.155); // [GeV]
   ~Model_HRG();
 
   double GetIntegrand(ParticleType* aPartType, ParticleCoor& coor) override;

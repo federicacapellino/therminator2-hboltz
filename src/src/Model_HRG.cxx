@@ -38,11 +38,11 @@
 using namespace TMath;
 using namespace std;
 
-Model_HRG::Model_HRG() {
+Model_HRG::Model_HRG(double aTemperature) {
   mName = "HRG";
   //  ReadParameters();
   Description();
-  mTemperature = 0.155; // Units GeV
+  mTemperature = aTemperature; // Units GeV (default 0.155)
   mSize = 30. / kHbarC; // The size of the box, e.g. 30 fm,  in 1/GeV
   mHyperCube = 4.0 * M_PI * 1. * pow(mSize, 3.);
 
